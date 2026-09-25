@@ -3,7 +3,7 @@ import {
   loadProgress, saveProgress, loadOpen, saveOpen, loadDayPick, saveDayPick,
   loadKey, saveKey, forgetKey, loadLastForm, saveLastForm,
 } from "./storage.js";
-import { segmentsFor, toMin, nowMinutes, todayISO, formatDay, dateRange, addDays } from "./schedule.js";
+import { segmentsFor, toMin, nowMinutes, todayISO, formatDay, formatShort, dateRange, addDays } from "./schedule.js";
 import { PROVIDERS, PRICES_CHECKED, DEFAULT_PROVIDER, listModels, testConnection } from "./providers.js";
 import { generatePlan } from "./generator.js";
 import { openDemo } from "./demo.js";
@@ -91,7 +91,9 @@ function groupTimeRange(segs, group) {
 // ---------------- Header & plan switcher ----------------
 function renderHeader() {
   const p = plan();
-  $("planName").textContent = p ? `${iconOf(p) ? iconOf(p) + " " : ""}${p.name}` : "FocusPlan";
+  $("planName").innerHTML = p
+    ? `<span class="title-dates">${esc(formatShort(p.startDate))} → ${esc(formatShort(p.endDate))}</span> ${esc(iconOf(p))} ${esc(p.name)}`
+    : "FocusPlan";
   const dates = p ? `${formatDay(p.startDate)} → ${formatDay(p.endDate)}` : "";
   $("planSub").textContent = !p
     ? "No plan yet. Open ✨ Personalize to create one."
@@ -111,7 +113,7 @@ function renderPlanBar() {
     btn.className = "plan-pill" + (p.id === activeId ? " active" : "");
     const removable = p.source === "example";
     const mark = iconOf(p) ? `<span class="icon">${esc(iconOf(p))}</span>` : `<span class="dot" style="background:${esc(p.color)}"></span>`;
-    btn.innerHTML = `${mark}<span>${esc(p.name)}</span><span class="pct">${planProgress(p).pct}%</span>` +
+    btn.innerHTML = `${mark}<span class="pill-date">${esc(formatShort(p.startDate))}</span><span>${esc(p.name)}</span><span class="pct">${planProgress(p).pct}%</span>` +
       (removable ? `<span class="x" role="button" title="Remove this example" aria-label="Remove ${esc(p.name)}">✕</span>` : "");
     btn.addEventListener("click", e => {
       if (e.target.classList.contains("x")) return removePlan(p.id);
@@ -616,20 +618,55 @@ function renderPreview() {
   setMsg("saveMsg", plans.length >= MAX_PLANS ? `You already have ${MAX_PLANS} plans. Delete one before saving.` : "", "error");
 }
 
+// Live step list shown while a plan is generated, so it's clear what's happening and how far along it is.
+function renderProgress(s) {
+  const secs = Math.floor((Date.now() - s.started) / 1000);
+  const order = ["schedule", "ask", "writing", "check"];
+  const at = order.indexOf(s.stage);
+  const state = i => (i < at ? "done" : i === at ? "now" : "todo");
+  const mark = st => (st === "done" ? "✓" : st === "now" ? '<span class="spinner"></span>' : "○");
+  const who = `${esc(PROVIDERS[s.provider].label)} · ${esc(s.model)}`;
+  const steps = [
+    `Schedule ready: ${s.days} days × ${s.blocks} focus blocks, with breaks, meals and sleep`,
+    at > 1 ? `Sent your goal to ${who}` : `Sending your goal to ${who} and waiting for the first words…`,
+    s.stage === "writing"
+      ? `Writing your plan: <b>day ${s.day} of ${s.days}</b> · ${s.chars.toLocaleString()} characters so far`
+      : "Writing your plan day by day",
+    "Checking that every block has concrete tasks",
+  ];
+  const pct = s.stage === "check" ? 100 : s.stage === "writing" ? Math.round(((s.day - 0.5) / s.days) * 95) : at * 3;
+  $("genMsg").className = "msg info";
+  $("genMsg").innerHTML = `
+    <div class="gen-head"><b>Creating your plan</b><span>⏱ ${secs}s</span></div>
+    <div class="gen-bar"><div style="width:${pct}%"></div></div>
+    <ul class="gen-steps">${steps.map((t, i) => `<li class="${state(i)}">${mark(state(i))} ${t}</li>`).join("")}</ul>
+    ${s.retry ? `<div class="gen-note">↻ ${esc(s.retry)}</div>` : ""}`;
+}
+
 async function runGenerate(inputs) {
   const btns = ["generateBtn", "regenPlan"].map($);
   btns.forEach(b => (b.disabled = true));
   const days = inputs.startDate && inputs.endDate ? dateRange(inputs.startDate, inputs.endDate).length : 0;
-  setMsg("genMsg", `Generating a ${days}-day plan with ${inputs.model}… long plans can take a minute or two.`, "info", true);
+  const s = { stage: "schedule", started: Date.now(), provider: inputs.provider, model: inputs.model, days, blocks: 0, day: 1, chars: 0, retry: "" };
+  const tick = setInterval(() => renderProgress(s), 500);
   try {
-    draft = await generatePlan({ ...inputs, colorIndex: plans.length });
+    draft = await generatePlan({
+      ...inputs,
+      colorIndex: plans.length,
+      onProgress: p => {
+        if (p.stage === "retry") s.retry = p.reason;
+        else Object.assign(s, p);
+        renderProgress(s);
+      },
+    });
     draftInputs = inputs;
-    setMsg("genMsg", "Plan ready. Check the preview below, then save it.", "info");
+    setMsg("genMsg", `✓ Plan ready in ${Math.round((Date.now() - s.started) / 1000)}s. Check the preview below, then save it.`, "ok");
     renderPreview();
     $("previewCard").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
     setMsg("genMsg", e.message || "Something went wrong.", "error");
   } finally {
+    clearInterval(tick);
     btns.forEach(b => (b.disabled = false));
   }
 }

@@ -1,7 +1,7 @@
 import { B471_PLAN } from "./plans/b471.js";
 import { todayISO } from "./schedule.js";
 
-export const MAX_PLANS = 5;
+export const MAX_PLANS = 10;
 const BUILTINS = { [B471_PLAN.id]: B471_PLAN };
 
 const K = {

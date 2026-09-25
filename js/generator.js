@@ -158,13 +158,22 @@ export function checkInputs({ key, model, goal, startDate, endDate, template }) 
 }
 
 // `icon` comes from the example chip the user picked, if any; otherwise the AI's choice is used.
-export async function generatePlan({ provider, key, model, goal, startDate, endDate, template, icon, colorIndex = 0 }) {
+// `onProgress` receives { stage: "schedule" | "ask" | "writing" | "check" | "retry", ... } as work happens.
+export async function generatePlan({ provider, key, model, goal, startDate, endDate, template, icon, colorIndex = 0, onProgress = () => {} }) {
   const problem = checkInputs({ key, model, goal, startDate, endDate, template });
   if (problem) throw new Error(problem);
 
   const dates = dateRange(startDate, endDate);
   const n = countStudyBlocks(template);
+  onProgress({ stage: "schedule", days: dates.length, blocks: n });
   const baseUser = buildUserPrompt({ goal: goal.trim(), dates, n, blockMin: template.blockMin });
+  // Each day in the reply starts with a "date" key, so counting them tells which day is being written.
+  const onText = text => onProgress({
+    stage: "writing",
+    day: Math.min(dates.length, Math.max(1, (text.match(/"date"\s*:/g) || []).length)),
+    days: dates.length,
+    chars: text.length,
+  });
 
   let useSchema = true;
   let retryNote = "";
@@ -174,7 +183,8 @@ export async function generatePlan({ provider, key, model, goal, startDate, endD
   while (true) {
     let text;
     try {
-      const res = await generate(provider, key, model, { system: SYSTEM, user: baseUser + retryNote, schema: PLAN_SCHEMA, useSchema });
+      onProgress({ stage: "ask" });
+      const res = await generate(provider, key, model, { system: SYSTEM, user: baseUser + retryNote, schema: PLAN_SCHEMA, useSchema, onText });
       text = res.text;
       usage.input += res.usage.input;
       usage.output += res.usage.output;
@@ -183,10 +193,12 @@ export async function generatePlan({ provider, key, model, goal, startDate, endD
       // Some models don't support schema-constrained output; the prompt alone still asks for JSON.
       if (useSchema && e.status === 400 && /format|schema|json|response_format|output_config/i.test(e.detail || e.message)) {
         useSchema = false;
+        onProgress({ stage: "retry", reason: "this model doesn't support strict JSON mode, asking again without it" });
         continue;
       }
       throw e;
     }
+    onProgress({ stage: "check" });
     try {
       const repaired = validateAndRepair(parseJSON(text), { dates, n });
       return {
@@ -207,6 +219,7 @@ export async function generatePlan({ provider, key, model, goal, startDate, endD
       parseFailures++;
       if (parseFailures > 1) throw new Error(`The AI's reply couldn't be turned into a plan (${e.message}). Try again or pick another model.`);
       retryNote = `\n\nYour previous reply could not be used (${e.message}). Reply again with only the JSON object.`;
+      onProgress({ stage: "retry", reason: `the reply couldn't be read (${e.message}), asking once more` });
     }
   }
 }

@@ -96,6 +96,10 @@ export function dateRange(startISO, endISO) {
   return out;
 }
 
+export function formatShort(iso) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 export function formatDay(iso) {
   return new Date(`${iso}T12:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 }

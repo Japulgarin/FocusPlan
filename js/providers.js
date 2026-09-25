@@ -112,10 +112,9 @@ function friendly(err, provider) {
   return new ProviderError(`${label}: ${detail || "request failed"}`, { status, detail });
 }
 
-async function http(url, { method = "GET", headers = {}, body } = {}) {
-  let res;
+async function send(url, { method = "GET", headers = {}, body } = {}) {
   try {
-    res = await fetch(url, {
+    return await fetch(url, {
       method,
       headers: body ? { "Content-Type": "application/json", ...headers } : headers,
       body: body ? JSON.stringify(body) : undefined,
@@ -123,17 +122,48 @@ async function http(url, { method = "GET", headers = {}, body } = {}) {
   } catch (e) {
     throw new ProviderError("network", { network: true, detail: e.message });
   }
-  const text = await res.text();
+}
+
+function httpError(status, text, fallback) {
   let data = null;
   try { data = JSON.parse(text); } catch (e) {}
-  if (!res.ok) {
-    const detail = (data && data.error && (data.error.message || data.error)) || (data && data.message) || text.slice(0, 300) || res.statusText;
-    const err = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
-    err.status = res.status;
-    err.detail = err.message;
-    throw err;
+  const detail = (data && data.error && (data.error.message || data.error)) || (data && data.message) || text.slice(0, 300) || fallback;
+  const err = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  err.status = status;
+  err.detail = err.message;
+  return err;
+}
+
+async function http(url, opts) {
+  const res = await send(url, opts);
+  const text = await res.text();
+  if (!res.ok) throw httpError(res.status, text, res.statusText);
+  try { return JSON.parse(text); } catch (e) { return null; }
+}
+
+// Reads a server-sent-events response and calls onEvent with each parsed JSON "data:" line.
+async function stream(url, opts, onEvent) {
+  const res = await send(url, opts);
+  if (!res.ok) throw httpError(res.status, await res.text(), res.statusText);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data === "[DONE]") return;
+      let event;
+      try { event = JSON.parse(data); } catch (e) { continue; }
+      onEvent(event);
+    }
   }
-  return data;
 }
 
 // ---------- Anthropic (official SDK, loaded on demand) ----------
@@ -159,7 +189,7 @@ async function anthropicModels(key) {
   return curated("anthropic", out);
 }
 
-async function anthropicGenerate(key, model, { system, user, schema, useSchema, maxTokens = 32000 }) {
+async function anthropicGenerate(key, model, { system, user, schema, useSchema, maxTokens = 32000, onText }) {
   const client = await anthropicClient(key);
   const params = {
     model,
@@ -170,7 +200,9 @@ async function anthropicGenerate(key, model, { system, user, schema, useSchema, 
   if (ADAPTIVE_THINKING.test(model)) params.thinking = { type: "adaptive" };
   if (useSchema) params.output_config = { format: { type: "json_schema", schema } };
 
-  const message = await client.messages.stream(params).finalMessage();
+  const messageStream = client.messages.stream(params);
+  if (onText) messageStream.on("text", (delta, snapshot) => onText(snapshot));
+  const message = await messageStream.finalMessage();
 
   if (message.stop_reason === "refusal") {
     throw new ProviderError("Claude declined this request. Try rephrasing the goal.");
@@ -210,7 +242,7 @@ async function compatModels(provider, key) {
   return curated(provider, list.map(m => ({ id: m.id })));
 }
 
-async function compatGenerate(provider, key, model, { system, user, schema, useSchema }) {
+async function compatGenerate(provider, key, model, { system, user, schema, useSchema, onText }) {
   const { base } = PROVIDERS[provider];
   const body = {
     model,
@@ -218,21 +250,32 @@ async function compatGenerate(provider, key, model, { system, user, schema, useS
       { role: "system", content: system },
       { role: "user", content: user },
     ],
+    stream: true,
+    stream_options: { include_usage: true },
   };
   if (useSchema) {
     body.response_format = provider === "deepseek"
       ? { type: "json_object" }
       : { type: "json_schema", json_schema: { name: "focus_plan", strict: true, schema } };
   }
-  const data = await http(`${base}/chat/completions`, { method: "POST", headers: authHeaders(provider, key), body });
-  const choice = data && data.choices && data.choices[0];
-  if (!choice) throw new ProviderError("The model returned no answer. Try again or pick another model.");
-  if (choice.finish_reason === "length") throw new ProviderError("The plan was too long for one reply. Shorten the date range or pick a model with a larger output limit.");
-  if (choice.finish_reason === "content_filter") throw new ProviderError("The model's safety filter blocked this request. Try rephrasing the goal.");
-  const content = choice.message && choice.message.content;
-  if (!content) throw new ProviderError("The model returned an empty answer. Try again or pick another model.");
-  const u = data.usage || {};
-  return { text: content, usage: { input: u.prompt_tokens || 0, output: u.completion_tokens || 0 } };
+  let text = "";
+  let finish = null;
+  let usage = {};
+  await stream(`${base}/chat/completions`, { method: "POST", headers: authHeaders(provider, key), body }, event => {
+    if (event.error) throw httpError(event.error.code || null, JSON.stringify(event), "stream error");
+    const choice = event.choices && event.choices[0];
+    const piece = choice && choice.delta && choice.delta.content;
+    if (piece) {
+      text += piece;
+      if (onText) onText(text);
+    }
+    if (choice && choice.finish_reason) finish = choice.finish_reason;
+    if (event.usage) usage = event.usage;
+  });
+  if (finish === "length") throw new ProviderError("The plan was too long for one reply. Shorten the date range or pick a model with a larger output limit.");
+  if (finish === "content_filter") throw new ProviderError("The model's safety filter blocked this request. Try rephrasing the goal.");
+  if (!text) throw new ProviderError("The model returned an empty answer. Try again or pick another model.");
+  return { text, usage: { input: usage.prompt_tokens || 0, output: usage.completion_tokens || 0 } };
 }
 
 // ---------- Google Gemini (REST) ----------
@@ -257,28 +300,36 @@ async function geminiModels(key) {
     .map(m => ({ id: m.name.replace(/^models\//, "") })));
 }
 
-async function geminiGenerate(key, model, { system, user, schema, useSchema }) {
+async function geminiGenerate(key, model, { system, user, schema, useSchema, onText }) {
   const body = {
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: "user", parts: [{ text: user }] }],
     generationConfig: { responseMimeType: "application/json" },
   };
   if (useSchema) body.generationConfig.responseSchema = toGeminiSchema(schema);
-  const data = await http(`${GEMINI_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
+  let text = "";
+  let finish = null;
+  let blocked = null;
+  let u = {};
+  await stream(`${GEMINI_BASE}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
     method: "POST",
     headers: { "x-goog-api-key": key },
     body,
+  }, event => {
+    if (event.promptFeedback && event.promptFeedback.blockReason) blocked = event.promptFeedback.blockReason;
+    const cand = event.candidates && event.candidates[0];
+    const piece = cand && cand.content && (cand.content.parts || []).map(p => p.text || "").join("");
+    if (piece) {
+      text += piece;
+      if (onText) onText(text);
+    }
+    if (cand && cand.finishReason) finish = cand.finishReason;
+    if (event.usageMetadata) u = event.usageMetadata;
   });
-  const cand = data && data.candidates && data.candidates[0];
-  if (!cand) {
-    const reason = data && data.promptFeedback && data.promptFeedback.blockReason;
-    throw new ProviderError(reason ? `Gemini blocked this request (${reason}). Try rephrasing the goal.` : "Gemini returned no answer.");
-  }
-  if (cand.finishReason === "MAX_TOKENS") throw new ProviderError("The plan was too long for one reply. Shorten the date range.");
-  if (cand.finishReason === "SAFETY") throw new ProviderError("Gemini's safety filter blocked this request. Try rephrasing the goal.");
-  const text = ((cand.content && cand.content.parts) || []).map(p => p.text || "").join("");
+  if (blocked) throw new ProviderError(`Gemini blocked this request (${blocked}). Try rephrasing the goal.`);
+  if (finish === "MAX_TOKENS") throw new ProviderError("The plan was too long for one reply. Shorten the date range.");
+  if (finish === "SAFETY") throw new ProviderError("Gemini's safety filter blocked this request. Try rephrasing the goal.");
   if (!text) throw new ProviderError("Gemini returned an empty answer.");
-  const u = data.usageMetadata || {};
   return { text, usage: { input: u.promptTokenCount || 0, output: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0) } };
 }
 

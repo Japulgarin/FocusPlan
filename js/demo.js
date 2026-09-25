@@ -7,7 +7,7 @@ const STEPS = [
   { title: "AI builds your plan", text: "The AI turns your goal into a day-by-day plan with a concrete checklist for every focus block." },
   { title: "Your day, block by block", text: "Focus blocks, breaks, meals and sleep are scheduled for you. The Right Now panel always shows what to do." },
   { title: "Check it off", text: "Tick tasks as you finish them and watch the day fill up." },
-  { title: "Switch plans, see what you've accomplished", text: "Keep up to 5 plans side by side. Pick one at the top to see your status: how much of each day and the whole plan is done." },
+  { title: "Switch plans, see what you've accomplished", text: "Keep up to 10 plans side by side. Pick one at the top to see your status: how much of each day and the whole plan is done." },
 ];
 
 const PLAN_PILLS = [

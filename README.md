@@ -6,25 +6,11 @@
 
 *How it works, in 5 steps (the same walkthrough plays when the app opens): **1** describe your goal → **2** the AI builds your plan → **3** your day, block by block → **4** check it off → **5** switch plans and see what you've accomplished.*
 
-## Run it
+## Start
 
-FocusPlan is a static site: no install, no build, no account. Serve the folder with any web server (ES modules don't load from `file://`):
+**Windows:** double-click **`start.bat`**. **Any OS:** run `python -m http.server 8766` in this folder, then open **http://localhost:8766**.
 
-```bash
-git clone https://github.com/Japulgarin/FocusPlan.git
-cd FocusPlan
-python -m http.server 8766
-```
-
-Then open **http://localhost:8766**. The walkthrough plays, and then:
-
-1. Open **✨ Personalize** (the first tab).
-2. **Step 1:** pick a provider (DeepSeek is the default) and model, paste your key, press **💾 Save key** and **🔌 Test**.
-3. **Step 2:** describe what you want to accomplish, or tap an example chip.
-4. **Step 3:** choose the start/end dates (up to 31 days), wake/sleep times and block length.
-5. Click **✨ Generate plan**, check the preview (with tokens and cost), then **Save as plan**.
-
-No API key yet? Load one of the ready-made **example plans** from the "+ example" pills at the top.
+Then: **✨ Personalize** → paste an API key → describe your goal → **✨ Generate plan**. No key yet? Load an **example plan** from the "+ example" pills at the top.
 
 ## Features
 
@@ -32,7 +18,8 @@ No API key yet? Load one of the ready-made **example plans** from the "+ example
 - **Right Now panel**: a live clock plus a big color-coded status (focus / break / meal / sleep) and the tasks for the current block.
 - **Checklist**: every day, every block, every break, in order. Past blocks fade out, the current block is highlighted, and finished blocks get a DONE badge.
 - **Daily timeline**: the whole day on one line, with the current moment moved to the top.
-- **Up to 5 plans** side by side, each with its own icon and progress. Switch with one click.
+- **Up to 10 plans** side by side, each with its dates, icon and progress. Switch with one click.
+- **Live progress while generating**: the reply streams in, so you see each step (schedule ready → asking the AI → writing day 2 of 4 → checking the plan) with a timer and progress bar.
 - **✨ Personalize (AI plan generator)** in three steps: (1) pick your AI, (2) say what you want to accomplish, (3) pick the dates and your day. You get a preview before you save.
 - **Example prompts**: one-tap chips next to the goal box (📗 Study week, 📘 Exam, 🗣️ Language, 📝 Project, 💼 Work) fill in a short prompt, the dates and a matching day rhythm. The chip's icon becomes the plan's icon; for your own goals the AI picks one (e.g. 🏃 for a 5k).
 - **🔑 API keys**: **💾 Save key** saves the current provider's key; **🔑 Save keys for other providers** is a compact dropdown for the rest. Providers with a saved key are marked ✓.
@@ -71,6 +58,8 @@ The AI never sets the times. FocusPlan builds the schedule itself (focus blocks,
 ## Project layout
 
 ```
+start.bat             double-click to run the app locally (Windows)
+publish.bat           double-click to publish to GitHub, with an API-key check
 index.html            page shell
 css/styles.css        styles (dark theme, mobile-friendly)
 docs/how-it-works.svg animated walkthrough shown at the top of this README
@@ -85,6 +74,10 @@ js/plans/study.js     example plan: normal study week (AI-generated)
 js/plans/micro.js     example plan: Microeconomics exam (AI-generated)
 js/plans/examples.js  example list, prompt chips, and loading an example from today
 ```
+
+## Publishing changes
+
+Double-click **`publish.bat`**: it stages everything, **refuses to publish if any file looks like it contains an API key** (it lists the files, never the key), asks for a commit message and pushes to GitHub.
 
 ## Hosting
 
