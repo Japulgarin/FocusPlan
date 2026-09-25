@@ -117,6 +117,7 @@ function markup(bar) {
     <div class="demo-actions">
       <button type="button" id="demoReplay">↺ Replay</button>
       <button type="button" id="demoSkip">Skip</button>
+      <button type="button" id="demoExample">📘 Load example plan</button>
       <button type="button" class="btn-primary" id="demoCreate">Create my plan →</button>
     </div>
   </div>`;
@@ -221,7 +222,7 @@ function spotlightPersonalize() {
   setTimeout(stop, 8000);
 }
 
-export async function openDemo({ onCreate, onClose } = {}) {
+export async function openDemo({ onCreate, onExample, onClose } = {}) {
   if (document.querySelector(".demo-overlay")) return;
   const bar = dayBar();
   const overlay = document.createElement("div");
@@ -253,6 +254,12 @@ export async function openDemo({ onCreate, onClose } = {}) {
   overlay.querySelector(".demo-close").addEventListener("click", close);
   overlay.querySelector("#demoSkip").addEventListener("click", close);
   overlay.querySelector("#demoCreate").addEventListener("click", () => { if (onCreate) onCreate(); close(); });
+  overlay.querySelector("#demoExample").addEventListener("click", () => {
+    if (tl) tl.kill();
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+    if (onExample) onExample();
+  });
   overlay.querySelector(".demo-close").focus();
 
   let gsap;

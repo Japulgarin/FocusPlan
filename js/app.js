@@ -7,6 +7,7 @@ import { segmentsFor, toMin, nowMinutes, todayISO, formatDay, dateRange } from "
 import { PROVIDERS, PRICES_CHECKED, DEFAULT_PROVIDER, listModels, testConnection, usesServerFallback } from "./providers.js";
 import { generatePlan } from "./generator.js";
 import { openDemo } from "./demo.js";
+import { microExample, MICRO_EXAMPLE_ID, MICRO_GOAL } from "./plans/micro.js";
 
 const $ = id => document.getElementById(id);
 
@@ -117,6 +118,30 @@ function renderPlanBar() {
   add.title = add.disabled ? `You have ${MAX_PLANS} plans. Delete one to make room.` : "Create a plan with AI";
   add.addEventListener("click", () => showTab("personalize"));
   bar.appendChild(add);
+}
+
+// Adds the Microeconomics example (starting today) or jumps to it if it's already loaded.
+function loadExamplePlan() {
+  if (plans.some(p => p.id === MICRO_EXAMPLE_ID)) return switchPlan(MICRO_EXAMPLE_ID);
+  if (plans.length >= MAX_PLANS) {
+    showTab("personalize");
+    setMsg("genMsg", `You already have ${MAX_PLANS} plans. Delete one to load the example.`, "error");
+    return;
+  }
+  plans = addPlan(microExample(todayISO()));
+  switchPlan(MICRO_EXAMPLE_ID);
+}
+
+function useExampleGoal() {
+  $("goal").value = MICRO_GOAL;
+  const start = todayISO();
+  const end = new Date(`${start}T12:00:00`);
+  end.setDate(end.getDate() + 3);
+  $("startDate").value = start;
+  $("endDate").value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+  persistForm();
+  setMsg("genMsg", "Example goal filled in (4 days from today). Add your key, test the connection, then Generate.", "info");
+  $("goal").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function switchPlan(id) {
@@ -588,6 +613,8 @@ function initPersonalize() {
   });
 
   $("loadModels").addEventListener("click", loadModelList);
+  $("loadExample").addEventListener("click", loadExamplePlan);
+  $("useExampleGoal").addEventListener("click", useExampleGoal);
 
   $("testBtn").addEventListener("click", async () => {
     const { provider, key, model } = formValues();
@@ -652,6 +679,7 @@ const startDemo = () => openDemo({
     showTab("personalize");
     $("goal").focus();
   },
+  onExample: loadExamplePlan,
 });
 $("howItWorks").addEventListener("click", startDemo);
 

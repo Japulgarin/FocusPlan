@@ -17,6 +17,7 @@ FocusPlan lays out your day as focus blocks, short breaks, long breaks, meals, a
 - **✨ Personalize (AI plan generator)**: pick a provider and model, paste your API key, describe the goal, choose the dates and your wake/sleep times. You get a preview before you save.
 - **🔌 Test connection**: right under the provider and model, it sends just "hi" to confirm your key and the AI are connected before you generate.
 - Plans created with AI show your goal (🎯) under the plan name, so the checklist always says what it's for.
+- **📘 Example plan**: a 4-day Microeconomics exam plan that FocusPlan generated with DeepSeek (`deepseek-flash`: 841 input + 6,783 output tokens, about $0.004–0.008). Load it from the intro or from ✨ Personalize; it starts on today's date. **Use example goal** fills the form with the same goal so you can generate your own version.
 - Follows the real calendar: the app always opens on today.
 - No accounts, no server, no build step. Everything is stored in your browser.
 
@@ -73,7 +74,8 @@ js/schedule.js      builds each day's focus/break/meal schedule
 js/storage.js       plans, per-plan progress, keys (localStorage)
 js/generator.js     prompt, JSON schema, validation and repair of AI output
 js/providers.js     DeepSeek / Gemini / OpenAI / Anthropic / OpenRouter adapters and price table
-js/plans/b471.js    example plan (a 7-day university exam countdown)
+js/plans/b471.js    built-in plan (a 7-day university exam countdown)
+js/plans/micro.js   loadable example (4-day Microeconomics exam plan, AI-generated)
 ```
 
 ## Hosting
