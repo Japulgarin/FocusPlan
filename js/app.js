@@ -143,6 +143,19 @@ function renderNowPanel() {
   const segs = segmentsFor(p, day);
   const { segIdx, status } = findCurrentSegment(segs);
 
+  // Live status only makes sense for today's date; other days get a calm preview.
+  if (day.date !== todayISO()) {
+    const firstStudy = segs.find(s => s.type === "study");
+    const future = day.date > todayISO();
+    el.innerHTML = `
+      <div class="now-status idle">
+        <div class="tag">${future ? "📅 Coming up" : "✔ Past day"}</div>
+        <div class="range">${esc(formatDay(day.date))} · ${esc(day.label)}</div>
+        ${future && firstStudy ? `<div class="block-name">First block at ${esc(firstStudy.start)}: ${esc(segGroupTitle(day, firstStudy))}</div>` : ""}
+      </div>`;
+    return;
+  }
+
   if (status === "study") {
     const seg = segs[segIdx];
     const gIdx = findGroupIndexForBlockNum(day, seg.blockNum);
@@ -225,9 +238,10 @@ function renderChecklist() {
     return;
   }
   const mins = nowMinutes();
-  const tIdx = todayIndex(p);
+  const today = todayISO();
   const selSegs = segmentsFor(p, p.days[selectedDay]);
-  const cur = findCurrentSegment(selSegs);
+  const selIsToday = p.days[selectedDay].date === today;
+  const cur = selIsToday ? findCurrentSegment(selSegs) : { segIdx: -1, status: "idle" };
   const nowGroupIdx = cur.status === "study" ? findGroupIndexForBlockNum(p.days[selectedDay], selSegs[cur.segIdx].blockNum) : -1;
 
   p.days.forEach((day, dayIdx) => {
@@ -238,7 +252,7 @@ function renderChecklist() {
       if (progress[taskId(dayIdx, bIdx, ti)]) dayDone++;
     }));
     const pct = dayTotal ? Math.round((dayDone / dayTotal) * 100) : 0;
-    const isSel = dayIdx === selectedDay;
+    const isSel = dayIdx === selectedDay && selIsToday;
     const isSelNowDay = isSel && nowGroupIdx >= 0;
 
     const dayEl = document.createElement("div");
@@ -249,7 +263,7 @@ function renderChecklist() {
     header.className = "day-header";
     header.innerHTML = `
       <div>
-        <div class="day-title">${esc(formatDay(day.date))}${dayIdx === tIdx ? " — Today" : ""}</div>
+        <div class="day-title">${esc(formatDay(day.date))}${day.date === today ? " — Today" : ""}</div>
         <div class="day-date">${esc(day.label)}</div>
       </div>
       <div class="day-progress-wrap">
@@ -317,8 +331,9 @@ function renderTimeline() {
   if (!p) return;
   const day = p.days[selectedDay];
   const segs = segmentsFor(p, day);
-  const mins = nowMinutes();
-  const { segIdx: nowIdx, status } = findCurrentSegment(segs);
+  const isToday = day.date === todayISO();
+  const mins = isToday ? nowMinutes() : -1;
+  const { segIdx: nowIdx, status } = isToday ? findCurrentSegment(segs) : { segIdx: -1, status: "idle" };
   const live = status !== "idle" && status !== "upcoming";
   const start = nowIdx >= 0 ? nowIdx : 0;
   const order = segs.map((s, i) => i).slice(start).concat(segs.map((s, i) => i).slice(0, start));
@@ -353,8 +368,8 @@ function buildDaySelect() {
     return;
   }
   sel.disabled = false;
-  const tIdx = todayIndex(p);
-  sel.innerHTML = p.days.map((d, i) => `<option value="${i}">${esc(formatDay(d.date))}${i === tIdx ? " — Today" : ""}</option>`).join("");
+  const today = todayISO();
+  sel.innerHTML = p.days.map((d, i) => `<option value="${i}">${esc(formatDay(d.date))}${d.date === today ? " — Today" : ""}</option>`).join("");
   sel.value = String(selectedDay);
 }
 
@@ -472,6 +487,17 @@ async function loadModelList() {
   }
 }
 
+function usageLine(u) {
+  if (!u) return "";
+  const n = x => x.toLocaleString();
+  let cost = "";
+  if (u.cost) {
+    const f = x => (x < 0.01 ? `$${x.toFixed(4)}` : `$${x.toFixed(3)}`);
+    cost = u.cost.high > u.cost.low ? ` · cost ≈ ${f(u.cost.low)}–${f(u.cost.high)}` : ` · cost ≈ ${f(u.cost.low)}`;
+  }
+  return ` · ${n(u.input)} input + ${n(u.output)} output tokens${cost} · ${u.seconds}s`;
+}
+
 function renderPreview() {
   if (!draft) {
     $("previewCard").hidden = true;
@@ -479,7 +505,7 @@ function renderPreview() {
   }
   $("previewCard").hidden = false;
   $("previewName").textContent = draft.name;
-  $("previewSub").textContent = `${draft.subtitle} · ${draft.days.length} days`;
+  $("previewSub").textContent = `${draft.subtitle} · ${draft.days.length} days${usageLine(draft.usage)}`;
   $("previewBody").innerHTML = draft.days.map(d => `
     <div class="preview-day">
       <h4>${esc(formatDay(d.date))}<span>${esc(d.label)}</span></h4>

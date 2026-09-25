@@ -184,7 +184,10 @@ async function anthropicGenerate(key, model, { system, user, schema, useSchema, 
   if (message.stop_reason === "max_tokens") {
     throw new ProviderError("The plan was too long for one reply. Shorten the date range or simplify the goal.");
   }
-  return message.content.filter(b => b.type === "text").map(b => b.text).join("");
+  return {
+    text: message.content.filter(b => b.type === "text").map(b => b.text).join(""),
+    usage: { input: message.usage.input_tokens || 0, output: message.usage.output_tokens || 0 },
+  };
 }
 
 // ---------- OpenAI-compatible (OpenAI, DeepSeek, OpenRouter) ----------
@@ -234,7 +237,8 @@ async function compatGenerate(provider, key, model, { system, user, schema, useS
   if (choice.finish_reason === "content_filter") throw new ProviderError("The model's safety filter blocked this request. Try rephrasing the goal.");
   const content = choice.message && choice.message.content;
   if (!content) throw new ProviderError("The model returned an empty answer. Try again or pick another model.");
-  return content;
+  const u = data.usage || {};
+  return { text: content, usage: { input: u.prompt_tokens || 0, output: u.completion_tokens || 0 } };
 }
 
 // ---------- Google Gemini (REST) ----------
@@ -280,7 +284,8 @@ async function geminiGenerate(key, model, { system, user, schema, useSchema }) {
   if (cand.finishReason === "SAFETY") throw new ProviderError("Gemini's safety filter blocked this request. Try rephrasing the goal.");
   const text = ((cand.content && cand.content.parts) || []).map(p => p.text || "").join("");
   if (!text) throw new ProviderError("Gemini returned an empty answer.");
-  return text;
+  const u = data.usageMetadata || {};
+  return { text, usage: { input: u.promptTokenCount || 0, output: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0) } };
 }
 
 // ---------- Public API ----------
@@ -297,15 +302,25 @@ export async function listModels(provider, key) {
 // Sends a plain "hi" and returns the reply and round-trip time, to prove key + model work.
 export async function testConnection(provider, key, model) {
   const started = performance.now();
-  const reply = await generate(provider, key, model, {
+  const { text } = await generate(provider, key, model, {
     system: "You are a connection test. Reply with one short friendly sentence.",
     user: "hi",
     useSchema: false,
     maxTokens: 2000,
   });
-  return { reply: reply.trim().slice(0, 200), ms: Math.round(performance.now() - started) };
+  return { reply: text.trim().slice(0, 200), ms: Math.round(performance.now() - started) };
 }
 
+// Estimated USD cost from the built-in price table; null when the model isn't in it.
+// DeepSeek charges double at peak hours, so it gets a low–high range.
+export function estimateCost(provider, model, usage) {
+  const p = (PRICES[provider] || {})[model];
+  if (!p || !usage) return null;
+  const low = (usage.input * p[0] + usage.output * p[1]) / 1e6;
+  return { low, high: provider === "deepseek" ? low * 2 : low };
+}
+
+// Returns { text, usage: { input, output } } (token counts as reported by the provider).
 export async function generate(provider, key, model, request) {
   try {
     if (provider === "anthropic") return await anthropicGenerate(key, model, request);

@@ -1,4 +1,4 @@
-import { generate } from "./providers.js";
+import { generate, estimateCost } from "./providers.js";
 import { countStudyBlocks, dateRange, formatDay } from "./schedule.js";
 
 export const MAX_DAYS = 31;
@@ -39,7 +39,15 @@ export const PLAN_SCHEMA = {
   },
 };
 
-const SYSTEM = `You are the planning assistant inside FocusPlan, a focus-schedule app. You turn a person's goal into a realistic, intense but sustainable day-by-day checklist. The app has already scheduled wake-up, breaks, meals and sleep; you only decide what each focus block is for and what gets checked off. Reply with a single JSON object and nothing else.`;
+const SYSTEM = `You are the planning assistant inside FocusPlan, a focus-schedule app. You turn a person's goal into a realistic, intense but sustainable day-by-day checklist that someone can follow block by block without thinking about what to do next. The app has already scheduled wake-up, breaks, meals and sleep; you only decide what each focus block is for and what gets checked off.
+
+Plan like an experienced tutor or coach:
+- Cover every topic the person names, giving more time to the ones they say they're weak at and to the ones that usually carry the most weight.
+- Mix learning with doing: after new material, schedule practice (problems, exercises, drafts) on it the same day or the next.
+- Build in active recall and spaced review: revisit earlier topics briefly on later days instead of only once.
+- Tasks must be concrete and checkable, with a number or an output where possible, e.g. "Solve 6 elasticity problems", "Write a 1-page summary sheet on monopoly", "Redo yesterday's mistakes without notes". Never write vague tasks like "study X" or "review notes".
+
+Reply with a single JSON object and nothing else.`;
 
 function buildUserPrompt({ goal, dates, n, blockMin }) {
   const dateList = dates.map(d => `${d} (${formatDay(d)})`).join("\n");
@@ -47,18 +55,19 @@ function buildUserPrompt({ goal, dates, n, blockMin }) {
 ${goal}
 </goal>
 
-Plan these dates, one "days" entry per date, in this order, using the exact date string:
+Plan these ${dates.length} dates, one "days" entry per date, in this order, using the exact date string:
 ${dateList}
 
 Each day has exactly ${n} focus blocks of about ${blockMin} minutes, numbered 1 to ${n}.
 
 How to fill it in:
-- Split each day's blocks into sessions. Each session is one item in "blocks" with consecutive "blockNums"; across the day, every number from 1 to ${n} is used exactly once.
+- Split each day's blocks into sessions of 1–4 consecutive blocks. Each session is one item in "blocks" with consecutive "blockNums"; across the day, every number from 1 to ${n} is used exactly once.
 - "short": the session's topic in 2–6 words.
-- "tasks": 1–4 short, concrete, checkable actions, each under about 12 words. Name the specific thing to do, not just "study X".
-- "label": a few words summing up the day.
-- "name": a short plan name, at most 6 words.
-- Sequence the work: new material first, then practice. Use roughly the last fifth of the days for review, realistic practice, and fixing weak spots. If the goal ends in an exam or deadline, keep the final day light.
+- "tasks": 2–4 short, concrete, checkable actions, each under about 12 words.
+- "label": a few words summing up the day's focus.
+- "name": a short plan name, at most 6 words, saying what the plan is for.
+- Sequence the work: new material first, then practice. Use roughly the last quarter of the days for mixed review, a timed practice run under real conditions, and fixing weak spots.
+- If the goal mentions an exam, presentation or deadline on the last date, make that day light: a short confidence review of summary sheets in the morning and no new material.
 
 Return JSON only, shaped as {"name": ..., "days": [{"date", "label", "blocks": [{"short", "blockNums", "tasks"}]}]}.`;
 }
@@ -149,10 +158,16 @@ export async function generatePlan({ provider, key, model, goal, startDate, endD
   let useSchema = true;
   let retryNote = "";
   let parseFailures = 0;
+  const usage = { input: 0, output: 0, calls: 0 };
+  const started = Date.now();
   while (true) {
     let text;
     try {
-      text = await generate(provider, key, model, { system: SYSTEM, user: baseUser + retryNote, schema: PLAN_SCHEMA, useSchema });
+      const res = await generate(provider, key, model, { system: SYSTEM, user: baseUser + retryNote, schema: PLAN_SCHEMA, useSchema });
+      text = res.text;
+      usage.input += res.usage.input;
+      usage.output += res.usage.output;
+      usage.calls++;
     } catch (e) {
       // Some models don't support schema-constrained output; the prompt alone still asks for JSON.
       if (useSchema && e.status === 400 && /format|schema|json|response_format|output_config/i.test(e.detail || e.message)) {
@@ -174,6 +189,7 @@ export async function generatePlan({ provider, key, model, goal, startDate, endD
         endDate,
         template,
         days: repaired.days,
+        usage: { ...usage, seconds: Math.round((Date.now() - started) / 100) / 10, cost: estimateCost(provider, model, usage) },
       };
     } catch (e) {
       parseFailures++;
