@@ -3,7 +3,7 @@ import { buildDaySegments, toMin } from "./schedule.js";
 const GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3/+esm";
 
 const STEPS = [
-  { title: "Describe your goal", text: "Tell FocusPlan what you want to achieve and pick your dates. Choose any AI — free and cheapest models are listed first." },
+  { title: "Open ✨ Personalize and describe your goal", text: "Click the ✨ Personalize tab (first tab at the top), write what you want to achieve and pick your dates. Cheapest AI models are listed first." },
   { title: "AI builds your plan", text: "The AI turns your goal into a day-by-day plan with a concrete checklist for every focus block." },
   { title: "Your day, block by block", text: "Focus blocks, breaks, meals and sleep are scheduled for you. The Right Now panel always shows what to do." },
   { title: "Check it off", text: "Tick tasks as you finish them and watch the day fill up. Keep up to 5 plans side by side." },
@@ -81,14 +81,24 @@ function markup(bar) {
     <div class="demo-kicker">How FocusPlan works</div>
     <svg class="demo-svg" viewBox="0 0 640 320" role="img" aria-label="Animated walkthrough of FocusPlan">
       <g id="d1">
-        <rect x="110" y="26" width="420" height="270" rx="14" fill="#171a21" stroke="#2a2f3a"/>
-        <text x="134" y="58" class="d-label">WHAT DO YOU WANT TO ACCOMPLISH?</text>
-        <rect x="134" y="68" width="372" height="60" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
-        <text id="dGoal" x="148" y="103" class="d-body"></text>
-        <rect id="dCaret" x="148" y="89" width="2" height="18" fill="#5b8cff"/>
-        <g class="d-chip"><rect x="134" y="144" width="172" height="34" rx="17" fill="#1e222b" stroke="#2a2f3a"/><text x="150" y="166" class="d-body">📅 Sep 25 → Oct 10</text></g>
-        <g class="d-chip"><rect x="316" y="144" width="190" height="34" rx="17" fill="#1e222b" stroke="#35d07f"/><text x="330" y="166" class="d-body">✨ Gemini · FREE tier</text></g>
-        <g id="dGen"><rect x="134" y="206" width="372" height="46" rx="10" fill="#5b8cff"/><text x="320" y="235" text-anchor="middle" class="d-btn">Generate plan</text></g>
+        <g id="dTabs">
+          <rect id="dTabP" x="110" y="6" width="128" height="28" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+          <text x="174" y="25" text-anchor="middle" class="d-tab">✨ Personalize</text>
+          <rect x="244" y="6" width="112" height="28" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+          <text x="300" y="25" text-anchor="middle" class="d-tab d-muted">✅ Checklist</text>
+          <rect x="362" y="6" width="104" height="28" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+          <text x="414" y="25" text-anchor="middle" class="d-tab d-muted">🕒 Timeline</text>
+        </g>
+        <g id="dForm">
+          <rect x="110" y="42" width="420" height="266" rx="14" fill="#171a21" stroke="#2a2f3a"/>
+          <text x="134" y="72" class="d-label">WHAT DO YOU WANT TO ACCOMPLISH?</text>
+          <rect x="134" y="82" width="372" height="56" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+          <text id="dGoal" x="148" y="115" class="d-body"></text>
+          <rect id="dCaret" x="148" y="101" width="2" height="18" fill="#5b8cff"/>
+          <g class="d-chip"><rect x="134" y="152" width="172" height="34" rx="17" fill="#1e222b" stroke="#2a2f3a"/><text x="150" y="174" class="d-body">📅 Sep 25 → Oct 10</text></g>
+          <g class="d-chip"><rect x="316" y="152" width="190" height="34" rx="17" fill="#1e222b" stroke="#35d07f"/><text x="330" y="174" class="d-body">✨ DeepSeek · cheapest</text></g>
+          <g id="dGen"><rect x="134" y="222" width="372" height="46" rx="10" fill="#5b8cff"/><text x="320" y="251" text-anchor="middle" class="d-btn">Generate plan</text></g>
+        </g>
         <path id="dCursor" d="M0 0 L0 22 L6 17 L10 26 L14 24 L10 15 L18 15 Z" fill="#fff" stroke="#0f1115" stroke-width="1.5"/>
       </g>
       <g id="d2">
@@ -127,10 +137,17 @@ function buildTimeline(gsap, root, bar, setStep) {
 
   const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
 
-  // 1 — describe the goal
+  // 1 — open Personalize (same tab as in the real app), then describe the goal
   tl.addLabel("s0")
     .call(() => { setStep(0); goal.textContent = ""; typed.n = 0; caret.setAttribute("x", 148); })
+    .set(one("#dTabP"), { attr: { fill: "#1e222b", stroke: "#2a2f3a" } })
+    .set(one("#dForm"), { autoAlpha: 0 })
     .to(scenes[0], { autoAlpha: 1, duration: 0.4 })
+    .to(one("#dCursor"), { x: 190, y: 22, duration: 0.8, ease: "power3.inOut" })
+    .to(one("#dTabP"), { attr: { fill: "#171a21", stroke: "#5b8cff" }, duration: 0.15 })
+    .fromTo(one("#dTabP"), { scale: 1, transformOrigin: "50% 50%" }, { scale: 0.93, duration: 0.1, yoyo: true, repeat: 1 }, "<")
+    .to(one("#dForm"), { autoAlpha: 1, duration: 0.35 })
+    .to(one("#dCursor"), { x: 560, y: 300, duration: 0.5 }, "<")
     .to(typed, {
       n: GOAL.length, duration: 1.6, ease: "none",
       onUpdate: () => {
@@ -139,7 +156,7 @@ function buildTimeline(gsap, root, bar, setStep) {
       },
     })
     .from(q(".d-chip"), { y: 12, autoAlpha: 0, stagger: 0.15, duration: 0.4 }, "-=0.2")
-    .to(one("#dCursor"), { x: 330, y: 226, duration: 0.8, ease: "power3.inOut" })
+    .to(one("#dCursor"), { x: 330, y: 242, duration: 0.8, ease: "power3.inOut" })
     .to(one("#dGen"), { scale: 0.94, transformOrigin: "50% 50%", duration: 0.1, yoyo: true, repeat: 1 })
     .to(scenes[0], { autoAlpha: 0, duration: 0.35 }, "+=0.3");
 
@@ -184,6 +201,26 @@ function buildTimeline(gsap, root, bar, setStep) {
   return tl;
 }
 
+// After the demo, point at the real ✨ Personalize tab so it's obvious where to start.
+function spotlightPersonalize() {
+  const tab = document.querySelector('.tab-btn[data-tab="personalize"]');
+  if (!tab || tab.classList.contains("active")) return;
+  document.querySelectorAll(".spotlight-tip").forEach(t => t.remove());
+  const tip = document.createElement("div");
+  tip.className = "spotlight-tip";
+  tip.textContent = "👆 Create your own plan here";
+  tab.style.position = "relative";
+  tab.appendChild(tip);
+  tab.classList.add("spotlight");
+  const stop = () => {
+    tab.classList.remove("spotlight");
+    tip.remove();
+    tab.removeEventListener("click", stop);
+  };
+  tab.addEventListener("click", stop);
+  setTimeout(stop, 8000);
+}
+
 export async function openDemo({ onCreate, onClose } = {}) {
   if (document.querySelector(".demo-overlay")) return;
   const bar = dayBar();
@@ -208,13 +245,14 @@ export async function openDemo({ onCreate, onClose } = {}) {
     overlay.remove();
     document.removeEventListener("keydown", onKey);
     if (onClose) onClose();
+    spotlightPersonalize();
   };
   const onKey = e => { if (e.key === "Escape") close(); };
   document.addEventListener("keydown", onKey);
   overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
   overlay.querySelector(".demo-close").addEventListener("click", close);
   overlay.querySelector("#demoSkip").addEventListener("click", close);
-  overlay.querySelector("#demoCreate").addEventListener("click", () => { close(); if (onCreate) onCreate(); });
+  overlay.querySelector("#demoCreate").addEventListener("click", () => { if (onCreate) onCreate(); close(); });
   overlay.querySelector(".demo-close").focus();
 
   let gsap;

@@ -1,7 +1,7 @@
 import {
   MAX_PLANS, loadPlans, addPlan, deletePlan, loadActiveId, saveActiveId,
   loadProgress, saveProgress, loadOpen, saveOpen, loadDayPick, saveDayPick,
-  loadKey, saveKey, forgetKey, loadLastForm, saveLastForm, demoSeen, markDemoSeen,
+  loadKey, saveKey, forgetKey, loadLastForm, saveLastForm,
 } from "./storage.js";
 import { segmentsFor, toMin, nowMinutes, todayISO, formatDay, dateRange } from "./schedule.js";
 import { PROVIDERS, PRICES_CHECKED, DEFAULT_PROVIDER, listModels, testConnection, usesServerFallback } from "./providers.js";
@@ -89,9 +89,12 @@ function groupTimeRange(segs, group) {
 function renderHeader() {
   const p = plan();
   $("planName").textContent = p ? p.name : "FocusPlan";
-  $("planSub").textContent = p
-    ? `${p.subtitle || `${formatDay(p.startDate)} → ${formatDay(p.endDate)}`} · Check off tasks as you go — progress is saved in this browser.`
-    : "No plan yet. Open ✨ Personalize to create one.";
+  const dates = p ? `${formatDay(p.startDate)} → ${formatDay(p.endDate)}` : "";
+  $("planSub").textContent = !p
+    ? "No plan yet. Open ✨ Personalize to create one."
+    : p.goal
+      ? `🎯 ${p.goal.length > 160 ? p.goal.slice(0, 157) + "…" : p.goal} · ${dates}`
+      : `${p.subtitle || dates} · Check off tasks as you go — progress is saved in this browser.`;
   const { total, done, pct } = p ? planProgress(p) : { total: 0, done: 0, pct: 0 };
   $("overallBar").style.width = `${pct}%`;
   $("overallLabel").textContent = `${done} / ${total} tasks done (${pct}%)`;
@@ -433,6 +436,7 @@ function onProviderChange() {
   const provider = $("provider").value;
   const info = PROVIDERS[provider];
   const saved = loadKey(provider);
+  setMsg("testMsg", "");
   $("apiKey").value = saved;
   $("rememberKey").checked = !!saved;
   $("keyHint").innerHTML = `Environment variable name: <code>${esc(info.envVar)}</code> · <a href="${esc(info.keyUrl)}" target="_blank" rel="noopener noreferrer">Get an API key</a>`;
@@ -561,16 +565,16 @@ function initPersonalize() {
 
   $("testBtn").addEventListener("click", async () => {
     const { provider, key, model } = formValues();
-    if (!key) return setMsg("genMsg", `Paste your ${PROVIDERS[provider].label} key first (${PROVIDERS[provider].envVar}).`, "error");
-    if (!model) return setMsg("genMsg", "Pick a model first.", "error");
+    if (!key) return setMsg("testMsg", `Paste your ${PROVIDERS[provider].label} key first (${PROVIDERS[provider].envVar}).`, "error");
+    if (!model) return setMsg("testMsg", "Pick a model first.", "error");
     persistForm();
     $("testBtn").disabled = true;
-    setMsg("genMsg", `Sending “hi” to ${model}…`, "info", true);
+    setMsg("testMsg", `Sending “hi” to ${PROVIDERS[provider].label} · ${model}…`, "info", true);
     try {
       const { reply, ms } = await testConnection(provider, key, model);
-      setMsg("genMsg", `✅ Connected to ${PROVIDERS[provider].label} · ${model} answered in ${(ms / 1000).toFixed(1)}s: “${reply}”`, "ok");
+      setMsg("testMsg", `✅ Connected to ${PROVIDERS[provider].label} · ${model} answered in ${(ms / 1000).toFixed(1)}s: “${reply}”`, "ok");
     } catch (e) {
-      setMsg("genMsg", `❌ ${e.message}`, "error");
+      setMsg("testMsg", `❌ Not connected — ${e.message}`, "error");
     } finally {
       $("testBtn").disabled = false;
     }
@@ -670,9 +674,6 @@ $("jumpBtn").addEventListener("click", () => {
 loadPlanState();
 initPersonalize();
 renderAll();
-if (!demoSeen()) {
-  markDemoSeen();
-  startDemo();
-}
+startDemo();
 setInterval(renderNowPanel, 1000);
 setInterval(renderAll, 30000);

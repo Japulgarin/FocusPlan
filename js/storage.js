@@ -87,9 +87,6 @@ export function loadKey(provider) { return read(K.key(provider), ""); }
 export function saveKey(provider, key) { write(K.key(provider), key); }
 export function forgetKey(provider) { remove(K.key(provider)); }
 
-export function demoSeen() { return read("focusplan:demoSeen", false) === true; }
-export function markDemoSeen() { write("focusplan:demoSeen", true); }
-
 export function loadLastForm() { return read(K.lastForm, {}); }
 export function saveLastForm(form) { write(K.lastForm, form); }
 

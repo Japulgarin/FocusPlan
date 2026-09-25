@@ -9,13 +9,14 @@ FocusPlan lays out your day as focus blocks, short breaks, long breaks, meals, a
 
 ## Features
 
-- **Animated walkthrough**: an SVG + GSAP demo of how FocusPlan works. It plays on the first visit and can be replayed with **▶ How it works**.
+- **Animated walkthrough**: an SVG + GSAP demo of how FocusPlan works. It plays every time the app starts, using the same ✨ Personalize tab as the real interface. When it closes, the real tab is highlighted so you know where to start. Replay it any time with **▶ How it works**.
 - **Right Now panel**: a live clock plus a big color-coded status (focus / break / meal / sleep) and the tasks for the current block.
 - **Checklist**: every day, every block, every break, in order. Past blocks fade out, the current block is highlighted, and finished blocks get a DONE badge.
 - **Daily timeline**: the whole day on one line, with the current moment moved to the top.
 - **Up to 5 plans** side by side. Switch with one click; each plan keeps its own progress.
 - **✨ Personalize (AI plan generator)**: pick a provider and model, paste your API key, describe the goal, choose the dates and your wake/sleep times. You get a preview before you save.
-- **🔌 Test connection**: sends just "hi" to the chosen model to confirm the key and model work before you generate.
+- **🔌 Test connection**: right under the provider and model, it sends just "hi" to confirm your key and the AI are connected before you generate.
+- Plans created with AI show your goal (🎯) under the plan name, so the checklist always says what it's for.
 - Follows the real calendar: the app always opens on today.
 - No accounts, no server, no build step. Everything is stored in your browser.
 

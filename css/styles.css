@@ -355,6 +355,31 @@ main { min-width: 0; }
 .demo-svg .d-dark { font-size: 14px; font-weight: 800; fill: #12141a; }
 .demo-svg .d-dark.d-small { font-size: 12px; font-weight: 700; fill: #12141a; }
 .demo-svg .d-task { font-size: 14px; }
+.demo-svg .d-tab { font-size: 13px; font-weight: 700; }
+.demo-svg .d-muted { fill: var(--muted); }
+
+.tab-btn.spotlight { color: var(--text); animation: spotlight 1.2s ease-in-out infinite; }
+@keyframes spotlight {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(91,140,255,.0); border-color: var(--accent); }
+  50% { box-shadow: 0 0 0 6px rgba(91,140,255,.45); border-color: var(--accent); }
+}
+.spotlight-tip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 20;
+  white-space: nowrap;
+  background: var(--accent);
+  color: #0b1020;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  pointer-events: none;
+}
+.test-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.test-row .msg { margin-top: 8px; }
 .demo-caption { text-align: center; padding: 14px 8px 4px; min-height: 104px; }
 .demo-caption h3 { margin: 8px 0 6px; font-size: 18px; }
 .demo-caption p { margin: 0 auto; max-width: 520px; color: var(--muted); font-size: 14px; line-height: 1.5; }

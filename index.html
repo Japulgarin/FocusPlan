@@ -41,7 +41,7 @@
         <div class="form-grid">
           <div class="field">
             <label for="provider">AI provider</label>
-            <select id="provider"></select>
+            <select id="provider" autocomplete="off"></select>
           </div>
           <div class="field">
             <label for="apiKey">API key</label>
@@ -49,20 +49,25 @@
               <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
               <button type="button" id="forgetKey" title="Remove the saved key from this browser">Forget</button>
             </div>
-            <label class="check"><input type="checkbox" id="rememberKey"> Remember on this device</label>
+            <label class="check"><input type="checkbox" id="rememberKey" autocomplete="off"> Remember on this device</label>
             <p class="hint key-hint" id="keyHint"></p>
           </div>
 
           <div class="field full">
             <label for="model">Model</label>
             <div class="row">
-              <select id="modelSelect" aria-label="Choose a model"></select>
+              <select id="modelSelect" aria-label="Choose a model" autocomplete="off"></select>
               <button type="button" id="loadModels">Load models</button>
             </div>
             <div class="row" style="margin-top:6px">
               <input id="model" type="text" spellcheck="false" placeholder="Or type a model ID">
             </div>
             <p class="hint" id="modelHint" style="margin:6px 0 0"></p>
+            <div class="test-row">
+              <button type="button" id="testBtn" title="Sends the word “hi” to the selected model to check the key and model work">🔌 Test connection</button>
+              <span class="hint" style="margin:0">Sends “hi” to this provider and model to check that your key and the AI are connected.</span>
+            </div>
+            <div class="msg" id="testMsg" role="status"></div>
           </div>
 
           <div class="field full">
@@ -98,7 +103,6 @@
 
         <p class="hint" style="margin:12px 0 0">🔒 Your key stays in this browser and is sent only to the provider you pick. Some providers block direct browser calls; if one does, use the same model through OpenRouter.</p>
         <div class="actions">
-          <button type="button" id="testBtn" title="Sends the word “hi” to the selected model to check the key and model work">🔌 Test connection</button>
           <button type="button" class="btn-primary" id="generateBtn">Generate plan</button>
         </div>
         <div class="msg" id="genMsg" role="status"></div>
@@ -122,7 +126,7 @@
     <h2>Right Now</h2>
     <div class="clock" id="clock">--:--:--</div>
     <div class="clock-date" id="clockDate"></div>
-    <select class="day-select" id="daySelect" aria-label="Day"></select>
+    <select class="day-select" id="daySelect" aria-label="Day" autocomplete="off"></select>
     <div id="nowStatus"></div>
     <button class="jump-btn" id="jumpBtn">Jump to current block ↓</button>
     <div class="legend">

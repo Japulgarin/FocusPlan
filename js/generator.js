@@ -67,6 +67,11 @@ function str(v, max) {
   return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
 }
 
+function nameFromGoal(goal) {
+  const first = goal.trim().split(/[.!?\n]/)[0].trim();
+  return first.length > 48 ? `${first.slice(0, 45).trim()}…` : first || "My focus plan";
+}
+
 function rangeLabel(nums) {
   return nums.length === 1 ? `Block ${nums[0]}` : `Blocks ${nums[0]}–${nums[nums.length - 1]}`;
 }
@@ -160,7 +165,7 @@ export async function generatePlan({ provider, key, model, goal, startDate, endD
       const repaired = validateAndRepair(parseJSON(text), { dates, n });
       return {
         id: `p_${Date.now().toString(36)}`,
-        name: repaired.name || goal.trim().slice(0, 40),
+        name: repaired.name.length >= 3 ? repaired.name : nameFromGoal(goal),
         subtitle: `${formatDay(startDate)} → ${formatDay(endDate)} · made with ${model}`,
         color: PALETTE[colorIndex % PALETTE.length],
         source: "ai",
