@@ -16,6 +16,15 @@ python -m http.server 8766
 
 Open **http://localhost:8766**. On Windows you can just double-click `start.bat`. Needs [Python](https://www.python.org/downloads/).
 
+## How to use
+
+1. **✨ Personalize:** pick an AI (DeepSeek is the default and cheapest), paste your API key and press **🔌 Test**.
+2. **Describe your goal**, or tap an example (📗 Study, 📘 Exam, 💼 Work…), then pick your dates and wake/sleep times.
+3. **✨ Generate plan:** watch it being written day by day, check the preview, then **Save**.
+4. **Follow it:** the **Right Now** panel shows what to do this minute. Tick tasks as you go and see your progress.
+
+No API key? Load a ready-made plan from the **"+ example"** pills at the top.
+
 ## Features
 
 - **Animated walkthrough**: the 5 steps above, made with SVG + GSAP, with a pause button and a progress bar you can click to jump. It highlights the real ✨ Personalize tab when it closes; replay it with **▶ How it works**.
