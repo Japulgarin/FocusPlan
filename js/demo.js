@@ -1,0 +1,239 @@
+import { buildDaySegments, toMin } from "./schedule.js";
+
+const GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3/+esm";
+
+const STEPS = [
+  { title: "Describe your goal", text: "Tell FocusPlan what you want to achieve and pick your dates. Choose any AI — free and cheapest models are listed first." },
+  { title: "AI builds your plan", text: "The AI turns your goal into a day-by-day plan with a concrete checklist for every focus block." },
+  { title: "Your day, block by block", text: "Focus blocks, breaks, meals and sleep are scheduled for you. The Right Now panel always shows what to do." },
+  { title: "Check it off", text: "Tick tasks as you finish them and watch the day fill up. Keep up to 5 plans side by side." },
+];
+
+const COLORS = { study: "#ff5c7a", break: "#ffb454", wake: "#ffb454", other: "#ffb454", meal: "#35d07f", wind: "#7c6ef2" };
+const GOAL = "Pass my statistics exam on Oct 10";
+const DAYS = ["Thu 25", "Fri 26", "Sat 27", "Sun 28", "Mon 29"];
+const TASKS = ["Read chapter 3 — probability rules", "Solve 10 practice problems", "Flashcards: key formulas", "Summary sheet for today"];
+
+function dayCards() {
+  return DAYS.map((d, i) => {
+    const x = 34 + i * 118;
+    const bars = [72, 56, 84].map((w, j) =>
+      `<rect class="d-bar" x="${x + 12}" y="${132 + j * 22}" width="${w}" height="10" rx="5" fill="${["#ff5c7a", "#5b8cff", "#35d07f"][j]}"/>`).join("");
+    return `<g class="d-card">
+      <rect x="${x}" y="90" width="104" height="140" rx="12" fill="#1e222b" stroke="#2a2f3a"/>
+      <text x="${x + 12}" y="116" class="d-strong">${d}</text>
+      ${bars}
+    </g>`;
+  }).join("");
+}
+
+function dayBar() {
+  const segs = buildDaySegments();
+  const x0 = 40, width = 560, y = 120, h = 46;
+  const start = toMin(segs[0].start);
+  const total = toMin(segs[segs.length - 1].end) - start;
+  const px = t => x0 + ((toMin(t) - start) / total) * width;
+  const rects = segs.map(s =>
+    `<rect class="d-seg" x="${px(s.start).toFixed(1)}" y="${y}" width="${Math.max(1, px(s.end) - px(s.start) - 1).toFixed(1)}" height="${h}" rx="3" fill="${COLORS[s.type]}"/>`).join("");
+  const labels = segs.filter(s => s.type === "meal" || s.type === "wind").map(s => {
+    const cx = (px(s.start) + px(s.end)) / 2;
+    return `<text class="d-seglabel d-small" x="${cx.toFixed(1)}" y="${y + h + 20}" text-anchor="middle">${s.type === "wind" ? "Sleep" : s.label}</text>`;
+  }).join("");
+  const nowX = px("14:45");
+  return { svg: `
+    <text x="${x0}" y="${y - 12}" class="d-small">08:00</text>
+    <text x="${x0 + width}" y="${y - 12}" class="d-small" text-anchor="end">22:00</text>
+    ${rects}${labels}
+    <g id="dNow">
+      <line x1="0" y1="${y - 8}" x2="0" y2="${y + h + 6}" stroke="#fff" stroke-width="2.5"/>
+      <path d="M-7 ${y - 16} L7 ${y - 16} L0 ${y - 6} Z" fill="#fff"/>
+      <text x="0" y="${y - 22}" text-anchor="middle" class="d-strong">NOW</text>
+    </g>
+    <g id="dRightNow">
+      <rect x="160" y="228" width="320" height="62" rx="12" fill="#ff5c7a"/>
+      <text x="320" y="254" text-anchor="middle" class="d-dark">● FOCUS TIME — HAPPENING NOW</text>
+      <text x="320" y="276" text-anchor="middle" class="d-dark d-small">14:30–15:20 · Hypothesis tests</text>
+    </g>`, x0, nowX };
+}
+
+function checklist() {
+  const rows = TASKS.map((t, i) => {
+    const y = 118 + i * 40;
+    return `<g class="d-row">
+      <rect class="d-box" x="176" y="${y}" width="20" height="20" rx="5" fill="#1e222b" stroke="#8b93a7" stroke-width="1.5"/>
+      <path class="d-check" d="M180 ${y + 10} l5 5 l9 -10" fill="none" stroke="#06210f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="d-task" x="208" y="${y + 15}">${t}</text>
+    </g>`;
+  }).join("");
+  return `
+    <rect x="150" y="26" width="340" height="286" rx="14" fill="#171a21" stroke="#2a2f3a"/>
+    <text x="176" y="58" class="d-strong">Thu, Sep 25 — Today</text>
+    <g id="dDone"><rect x="398" y="44" width="68" height="20" rx="10" fill="#35d07f"/><text x="432" y="58" text-anchor="middle" class="d-dark d-small">DONE ✓</text></g>
+    <rect x="176" y="76" width="290" height="10" rx="5" fill="#1e222b"/>
+    <rect id="dProg" x="176" y="76" width="0" height="10" rx="5" fill="#35d07f"/>
+    ${rows}`;
+}
+
+function markup(bar) {
+  return `
+  <div class="demo-card">
+    <button class="demo-close" type="button" aria-label="Close demo">✕</button>
+    <div class="demo-kicker">How FocusPlan works</div>
+    <svg class="demo-svg" viewBox="0 0 640 320" role="img" aria-label="Animated walkthrough of FocusPlan">
+      <g id="d1">
+        <rect x="110" y="26" width="420" height="270" rx="14" fill="#171a21" stroke="#2a2f3a"/>
+        <text x="134" y="58" class="d-label">WHAT DO YOU WANT TO ACCOMPLISH?</text>
+        <rect x="134" y="68" width="372" height="60" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+        <text id="dGoal" x="148" y="103" class="d-body"></text>
+        <rect id="dCaret" x="148" y="89" width="2" height="18" fill="#5b8cff"/>
+        <g class="d-chip"><rect x="134" y="144" width="172" height="34" rx="17" fill="#1e222b" stroke="#2a2f3a"/><text x="150" y="166" class="d-body">📅 Sep 25 → Oct 10</text></g>
+        <g class="d-chip"><rect x="316" y="144" width="190" height="34" rx="17" fill="#1e222b" stroke="#35d07f"/><text x="330" y="166" class="d-body">✨ Gemini · FREE tier</text></g>
+        <g id="dGen"><rect x="134" y="206" width="372" height="46" rx="10" fill="#5b8cff"/><text x="320" y="235" text-anchor="middle" class="d-btn">Generate plan</text></g>
+        <path id="dCursor" d="M0 0 L0 22 L6 17 L10 26 L14 24 L10 15 L18 15 Z" fill="#fff" stroke="#0f1115" stroke-width="1.5"/>
+      </g>
+      <g id="d2">
+        <circle id="dRing" cx="320" cy="160" r="40" fill="none" stroke="#a78bfa" stroke-width="3"/>
+        <g id="dAI"><circle cx="320" cy="160" r="34" fill="#a78bfa"/><text x="320" y="168" text-anchor="middle" class="d-ai">AI</text></g>
+        ${dayCards()}
+      </g>
+      <g id="d3">${bar.svg}</g>
+      <g id="d4">${checklist()}</g>
+    </svg>
+    <div class="demo-caption">
+      <div class="demo-dots">${STEPS.map((s, i) => `<button type="button" class="demo-dot" data-step="${i}" aria-label="Step ${i + 1}: ${s.title}"></button>`).join("")}</div>
+      <h3 id="demoTitle"></h3>
+      <p id="demoText"></p>
+    </div>
+    <div class="demo-actions">
+      <button type="button" id="demoReplay">↺ Replay</button>
+      <button type="button" id="demoSkip">Skip</button>
+      <button type="button" class="btn-primary" id="demoCreate">Create my plan →</button>
+    </div>
+  </div>`;
+}
+
+function buildTimeline(gsap, root, bar, setStep) {
+  const q = sel => root.querySelectorAll(sel);
+  const one = sel => root.querySelector(sel);
+  const scenes = ["#d1", "#d2", "#d3", "#d4"].map(one);
+  const goal = one("#dGoal");
+  const caret = one("#dCaret");
+  const typed = { n: 0 };
+
+  gsap.set(scenes, { autoAlpha: 0 });
+  gsap.set(one("#dCursor"), { x: 560, y: 300 });
+  gsap.set(q(".d-check"), { strokeDasharray: 30, strokeDashoffset: 30 });
+  gsap.set(one("#dNow"), { x: bar.x0 });
+
+  const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
+
+  // 1 — describe the goal
+  tl.addLabel("s0")
+    .call(() => { setStep(0); goal.textContent = ""; typed.n = 0; caret.setAttribute("x", 148); })
+    .to(scenes[0], { autoAlpha: 1, duration: 0.4 })
+    .to(typed, {
+      n: GOAL.length, duration: 1.6, ease: "none",
+      onUpdate: () => {
+        goal.textContent = GOAL.slice(0, Math.round(typed.n));
+        caret.setAttribute("x", 150 + goal.getComputedTextLength());
+      },
+    })
+    .from(q(".d-chip"), { y: 12, autoAlpha: 0, stagger: 0.15, duration: 0.4 }, "-=0.2")
+    .to(one("#dCursor"), { x: 330, y: 226, duration: 0.8, ease: "power3.inOut" })
+    .to(one("#dGen"), { scale: 0.94, transformOrigin: "50% 50%", duration: 0.1, yoyo: true, repeat: 1 })
+    .to(scenes[0], { autoAlpha: 0, duration: 0.35 }, "+=0.3");
+
+  // 2 — AI builds the plan
+  tl.addLabel("s1")
+    .call(() => setStep(1))
+    .to(scenes[1], { autoAlpha: 1, duration: 0.3 })
+    .from(one("#dAI"), { scale: 0, transformOrigin: "50% 50%", duration: 0.5, ease: "back.out(2)" })
+    .fromTo(one("#dRing"), { scale: 1, autoAlpha: 1, transformOrigin: "50% 50%" }, { scale: 1.8, autoAlpha: 0, duration: 0.8, repeat: 1 })
+    .to(one("#dAI"), { scale: 0, autoAlpha: 0, transformOrigin: "50% 50%", duration: 0.3 }, "-=0.4")
+    .from(q(".d-card"), {
+      x: i => 320 - (86 + i * 118), y: 0, scale: 0.2, autoAlpha: 0, transformOrigin: "50% 50%",
+      stagger: 0.12, duration: 0.55, ease: "back.out(1.4)",
+    }, "-=0.2")
+    .from(q(".d-bar"), { scaleX: 0, transformOrigin: "0% 50%", stagger: 0.03, duration: 0.3 }, "-=0.3")
+    .to(scenes[1], { autoAlpha: 0, duration: 0.35 }, "+=0.9");
+
+  // 3 — the day, block by block
+  tl.addLabel("s2")
+    .call(() => setStep(2))
+    .to(scenes[2], { autoAlpha: 1, duration: 0.3 })
+    .from(q(".d-seg"), { scaleY: 0, transformOrigin: "50% 100%", stagger: 0.035, duration: 0.3 })
+    .from(q(".d-seglabel"), { autoAlpha: 0, y: 6, stagger: 0.1, duration: 0.3 }, "-=0.2")
+    .fromTo(one("#dNow"), { x: bar.x0, autoAlpha: 0 }, { x: bar.nowX, autoAlpha: 1, duration: 1.4, ease: "power1.inOut" })
+    .from(one("#dRightNow"), { y: 20, autoAlpha: 0, duration: 0.45, ease: "back.out(1.6)" })
+    .to(scenes[2], { autoAlpha: 0, duration: 0.35 }, "+=1.1");
+
+  // 4 — check it off
+  tl.addLabel("s3")
+    .call(() => setStep(3))
+    .set(one("#dProg"), { attr: { width: 0 } })
+    .to(scenes[3], { autoAlpha: 1, duration: 0.3 })
+    .from(q(".d-row"), { x: -16, autoAlpha: 0, stagger: 0.1, duration: 0.35 })
+    .from(one("#dDone"), { autoAlpha: 0, duration: 0.01 });
+  q(".d-row").forEach((row, i) => {
+    tl.to(row.querySelector(".d-box"), { attr: { fill: "#35d07f", stroke: "#35d07f" }, duration: 0.15 }, `+=${i ? 0.25 : 0.4}`)
+      .to(row.querySelector(".d-check"), { strokeDashoffset: 0, duration: 0.25 }, "<")
+      .to(row.querySelector(".d-task"), { attr: { fill: "#8b93a7" }, duration: 0.2 }, "<")
+      .to(one("#dProg"), { attr: { width: 290 * ((i + 1) / TASKS.length) }, duration: 0.3 }, "<");
+  });
+  tl.fromTo(one("#dDone"), { scale: 0, autoAlpha: 0, transformOrigin: "50% 50%" }, { scale: 1, autoAlpha: 1, duration: 0.4, ease: "back.out(2.5)" });
+  return tl;
+}
+
+export async function openDemo({ onCreate, onClose } = {}) {
+  if (document.querySelector(".demo-overlay")) return;
+  const bar = dayBar();
+  const overlay = document.createElement("div");
+  overlay.className = "demo-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "How FocusPlan works");
+  overlay.innerHTML = markup(bar);
+  document.body.appendChild(overlay);
+
+  const setStep = i => {
+    overlay.querySelector("#demoTitle").textContent = `${i + 1} · ${STEPS[i].title}`;
+    overlay.querySelector("#demoText").textContent = STEPS[i].text;
+    overlay.querySelectorAll(".demo-dot").forEach((d, j) => d.classList.toggle("active", j === i));
+  };
+  setStep(0);
+
+  let tl = null;
+  const close = () => {
+    if (tl) tl.kill();
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+    if (onClose) onClose();
+  };
+  const onKey = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  overlay.querySelector(".demo-close").addEventListener("click", close);
+  overlay.querySelector("#demoSkip").addEventListener("click", close);
+  overlay.querySelector("#demoCreate").addEventListener("click", () => { close(); if (onCreate) onCreate(); });
+  overlay.querySelector(".demo-close").focus();
+
+  let gsap;
+  try {
+    const mod = await import(GSAP_URL);
+    gsap = mod.gsap || mod.default;
+  } catch (e) {
+    // Offline: show the final scene and let the dots flip through the captions.
+    overlay.querySelector("#d4").style.opacity = 1;
+    ["#d1", "#d2", "#d3"].forEach(s => (overlay.querySelector(s).style.display = "none"));
+    overlay.querySelector("#demoReplay").hidden = true;
+    overlay.querySelectorAll(".demo-dot").forEach(d => d.addEventListener("click", () => setStep(+d.dataset.step)));
+    return;
+  }
+  if (!overlay.isConnected) return;
+
+  tl = buildTimeline(gsap, overlay, bar, setStep);
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) tl.progress(1);
+  overlay.querySelector("#demoReplay").addEventListener("click", () => tl.restart());
+  overlay.querySelectorAll(".demo-dot").forEach(d =>
+    d.addEventListener("click", () => tl.play(`s${d.dataset.step}`)));
+}

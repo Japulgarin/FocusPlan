@@ -1,0 +1,179 @@
+import { generate } from "./providers.js";
+import { countStudyBlocks, dateRange, formatDay } from "./schedule.js";
+
+export const MAX_DAYS = 31;
+const PALETTE = ["#35d07f", "#ffb454", "#ff5c7a", "#a78bfa", "#2dd4bf", "#5b8cff"];
+
+const STR = { type: "string" };
+export const PLAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["name", "days"],
+  properties: {
+    name: STR,
+    days: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["date", "label", "blocks"],
+        properties: {
+          date: STR,
+          label: STR,
+          blocks: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["short", "blockNums", "tasks"],
+              properties: {
+                short: STR,
+                blockNums: { type: "array", items: { type: "integer" } },
+                tasks: { type: "array", items: STR },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+const SYSTEM = `You are the planning assistant inside FocusPlan, a focus-schedule app. You turn a person's goal into a realistic, intense but sustainable day-by-day checklist. The app has already scheduled wake-up, breaks, meals and sleep; you only decide what each focus block is for and what gets checked off. Reply with a single JSON object and nothing else.`;
+
+function buildUserPrompt({ goal, dates, n, blockMin }) {
+  const dateList = dates.map(d => `${d} (${formatDay(d)})`).join("\n");
+  return `<goal>
+${goal}
+</goal>
+
+Plan these dates, one "days" entry per date, in this order, using the exact date string:
+${dateList}
+
+Each day has exactly ${n} focus blocks of about ${blockMin} minutes, numbered 1 to ${n}.
+
+How to fill it in:
+- Split each day's blocks into sessions. Each session is one item in "blocks" with consecutive "blockNums"; across the day, every number from 1 to ${n} is used exactly once.
+- "short": the session's topic in 2–6 words.
+- "tasks": 1–4 short, concrete, checkable actions, each under about 12 words. Name the specific thing to do, not just "study X".
+- "label": a few words summing up the day.
+- "name": a short plan name, at most 6 words.
+- Sequence the work: new material first, then practice. Use roughly the last fifth of the days for review, realistic practice, and fixing weak spots. If the goal ends in an exam or deadline, keep the final day light.
+
+Return JSON only, shaped as {"name": ..., "days": [{"date", "label", "blocks": [{"short", "blockNums", "tasks"}]}]}.`;
+}
+
+function str(v, max) {
+  return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
+}
+
+function rangeLabel(nums) {
+  return nums.length === 1 ? `Block ${nums[0]}` : `Blocks ${nums[0]}–${nums[nums.length - 1]}`;
+}
+
+export function parseJSON(text) {
+  const t = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const a = t.indexOf("{");
+  const b = t.lastIndexOf("}");
+  if (a < 0 || b <= a) throw new Error("no JSON object found in the reply");
+  return JSON.parse(t.slice(a, b + 1));
+}
+
+// Makes sure every focus block 1..n belongs to exactly one session, drops junk, and caps lengths.
+function repairBlocks(rawBlocks, n) {
+  const used = new Set();
+  const out = [];
+  for (const b of Array.isArray(rawBlocks) ? rawBlocks : []) {
+    if (!b || typeof b !== "object") continue;
+    const nums = [...new Set((Array.isArray(b.blockNums) ? b.blockNums : []).map(Number))]
+      .filter(x => Number.isInteger(x) && x >= 1 && x <= n && !used.has(x))
+      .sort((x, y) => x - y);
+    if (!nums.length) continue;
+    nums.forEach(x => used.add(x));
+    const short = str(b.short, 60) || str(b.title, 60) || "Focus session";
+    const tasks = (Array.isArray(b.tasks) ? b.tasks : []).map(t => str(t, 200)).filter(Boolean).slice(0, 8);
+    out.push({ short, blockNums: nums, tasks: tasks.length ? tasks : [`Work on: ${short}`] });
+  }
+  for (let x = 1; x <= n; x++) {
+    if (used.has(x)) continue;
+    const target = out.find(b => b.blockNums.includes(x - 1)) || out.find(b => b.blockNums.includes(x + 1));
+    if (target) {
+      target.blockNums.push(x);
+      target.blockNums.sort((p, q) => p - q);
+    } else {
+      out.push({ short: "Open focus", blockNums: [x], tasks: ["Continue the most important unfinished task"] });
+    }
+    used.add(x);
+  }
+  out.sort((p, q) => p.blockNums[0] - q.blockNums[0]);
+  return out.map(b => ({ ...b, title: `${rangeLabel(b.blockNums)} · ${b.short}` }));
+}
+
+export function validateAndRepair(raw, { dates, n }) {
+  if (!raw || typeof raw !== "object") throw new Error("the reply was not a JSON object");
+  const rawDays = Array.isArray(raw.days) ? raw.days : [];
+  if (!rawDays.length) throw new Error("the reply had no days");
+  const byDate = new Map(rawDays.filter(d => d && typeof d.date === "string").map(d => [d.date.trim(), d]));
+  const days = dates.map((date, i) => {
+    const src = byDate.get(date) || rawDays[i] || {};
+    return { date, label: str(src.label, 120) || "Focus day", blocks: repairBlocks(src.blocks, n) };
+  });
+  return { name: str(raw.name, 80), days };
+}
+
+export function checkInputs({ key, model, goal, startDate, endDate, template }) {
+  if (!key) return "Paste your API key first.";
+  if (!model) return "Pick or type a model (use “Load models” to see the list).";
+  if (!goal || goal.trim().length < 10) return "Describe what you want to accomplish (at least a sentence).";
+  if (!startDate || !endDate) return "Pick a start and end date.";
+  if (startDate > endDate) return "The end date must be on or after the start date.";
+  const days = dateRange(startDate, endDate).length;
+  if (days > MAX_DAYS) return `Keep the plan to ${MAX_DAYS} days or fewer (this one is ${days}).`;
+  if (countStudyBlocks(template) < 1) return "Wake and sleep times leave no room for focus blocks. Widen the day.";
+  return null;
+}
+
+export async function generatePlan({ provider, key, model, goal, startDate, endDate, template, colorIndex = 0 }) {
+  const problem = checkInputs({ key, model, goal, startDate, endDate, template });
+  if (problem) throw new Error(problem);
+
+  const dates = dateRange(startDate, endDate);
+  const n = countStudyBlocks(template);
+  const baseUser = buildUserPrompt({ goal: goal.trim(), dates, n, blockMin: template.blockMin });
+
+  let useSchema = true;
+  let retryNote = "";
+  let parseFailures = 0;
+  while (true) {
+    let text;
+    try {
+      text = await generate(provider, key, model, { system: SYSTEM, user: baseUser + retryNote, schema: PLAN_SCHEMA, useSchema });
+    } catch (e) {
+      // Some models don't support schema-constrained output; the prompt alone still asks for JSON.
+      if (useSchema && e.status === 400 && /format|schema|json|response_format|output_config/i.test(e.detail || e.message)) {
+        useSchema = false;
+        continue;
+      }
+      throw e;
+    }
+    try {
+      const repaired = validateAndRepair(parseJSON(text), { dates, n });
+      return {
+        id: `p_${Date.now().toString(36)}`,
+        name: repaired.name || goal.trim().slice(0, 40),
+        subtitle: `${formatDay(startDate)} → ${formatDay(endDate)} · made with ${model}`,
+        color: PALETTE[colorIndex % PALETTE.length],
+        source: "ai",
+        goal: goal.trim(),
+        startDate,
+        endDate,
+        template,
+        days: repaired.days,
+      };
+    } catch (e) {
+      parseFailures++;
+      if (parseFailures > 1) throw new Error(`The AI's reply couldn't be turned into a plan (${e.message}). Try again or pick another model.`);
+      retryNote = `\n\nYour previous reply could not be used (${e.message}). Reply again with only the JSON object.`;
+    }
+  }
+}

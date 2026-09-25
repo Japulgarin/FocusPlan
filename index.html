@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FocusPlan</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header>
+  <nav class="plan-bar" id="planBar" aria-label="Plans"></nav>
+  <h1 id="planName">FocusPlan</h1>
+  <div class="sub" id="planSub"></div>
+  <div class="overall-bar-wrap"><div class="overall-bar" id="overallBar"></div></div>
+  <div class="overall-label" id="overallLabel">0 / 0 tasks done</div>
+</header>
+
+<div class="layout">
+  <main>
+    <div class="tabs" role="tablist">
+      <button class="tab-btn" data-tab="personalize">✨ Personalize</button>
+      <button class="tab-btn active" data-tab="checklist">✅ Checklist</button>
+      <button class="tab-btn" data-tab="timeline">🕒 Daily Timeline</button>
+      <button class="tab-btn demo-btn" id="howItWorks" type="button">▶ How it works</button>
+    </div>
+
+    <div class="tab-panel active" id="panel-checklist">
+      <div id="main"></div>
+    </div>
+
+    <div class="tab-panel" id="panel-timeline">
+      <div class="timeline-note">Full schedule for the day selected on the right: every focus block, break, meal and wind-down, in order. The current moment is highlighted and moved to the top.</div>
+      <div class="timeline" id="timelineWrap"></div>
+    </div>
+
+    <div class="tab-panel" id="panel-personalize">
+      <div class="card">
+        <h3>Create a new plan with AI</h3>
+        <p class="hint">Describe what you want to accomplish and pick the dates. FocusPlan schedules the breaks, meals and sleep; the AI fills each focus block with concrete tasks. You can hold up to 5 plans.</p>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="provider">AI provider</label>
+            <select id="provider"></select>
+          </div>
+          <div class="field">
+            <label for="apiKey">API key</label>
+            <div class="row">
+              <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+              <button type="button" id="forgetKey" title="Remove the saved key from this browser">Forget</button>
+            </div>
+            <label class="check"><input type="checkbox" id="rememberKey"> Remember on this device</label>
+            <p class="hint key-hint" id="keyHint"></p>
+          </div>
+
+          <div class="field full">
+            <label for="model">Model</label>
+            <div class="row">
+              <select id="modelSelect" aria-label="Choose a model"></select>
+              <button type="button" id="loadModels">Load models</button>
+            </div>
+            <div class="row" style="margin-top:6px">
+              <input id="model" type="text" spellcheck="false" placeholder="Or type a model ID">
+            </div>
+            <p class="hint" id="modelHint" style="margin:6px 0 0"></p>
+          </div>
+
+          <div class="field full">
+            <label for="goal">What do you want to accomplish?</label>
+            <textarea id="goal" placeholder="e.g. Pass my statistics exam on Oct 10. Topics: probability, distributions, hypothesis tests, regression. I'm weakest at hypothesis tests."></textarea>
+          </div>
+
+          <div class="field">
+            <label for="startDate">Start date</label>
+            <input id="startDate" type="date">
+          </div>
+          <div class="field">
+            <label for="endDate">End date</label>
+            <input id="endDate" type="date">
+          </div>
+          <div class="field">
+            <label for="wake">Wake up</label>
+            <input id="wake" type="time" value="08:00">
+          </div>
+          <div class="field">
+            <label for="sleep">Sleep</label>
+            <input id="sleep" type="time" value="22:00">
+          </div>
+          <div class="field">
+            <label for="blockMin">Focus block (minutes)</label>
+            <input id="blockMin" type="number" min="25" max="120" step="5" value="50">
+          </div>
+          <div class="field">
+            <label for="breakMin">Short break (minutes)</label>
+            <input id="breakMin" type="number" min="5" max="30" step="5" value="10">
+          </div>
+        </div>
+
+        <p class="hint" style="margin:12px 0 0">🔒 Your key stays in this browser and is sent only to the provider you pick. Some providers block direct browser calls; if one does, use the same model through OpenRouter.</p>
+        <div class="actions">
+          <button type="button" id="testBtn" title="Sends the word “hi” to the selected model to check the key and model work">🔌 Test connection</button>
+          <button type="button" class="btn-primary" id="generateBtn">Generate plan</button>
+        </div>
+        <div class="msg" id="genMsg" role="status"></div>
+      </div>
+
+      <div class="card" id="previewCard" hidden>
+        <h3 id="previewName"></h3>
+        <p class="hint" id="previewSub"></p>
+        <div id="previewBody"></div>
+        <div class="actions">
+          <button type="button" class="btn-primary" id="savePlan">Save as plan</button>
+          <button type="button" id="regenPlan">Regenerate</button>
+          <button type="button" id="discardPlan">Discard</button>
+        </div>
+        <div class="msg" id="saveMsg"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="now-panel">
+    <h2>Right Now</h2>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="clock-date" id="clockDate"></div>
+    <select class="day-select" id="daySelect" aria-label="Day"></select>
+    <div id="nowStatus"></div>
+    <button class="jump-btn" id="jumpBtn">Jump to current block ↓</button>
+    <div class="legend">
+      <span><i style="background:var(--now)"></i>Focus block</span>
+      <span><i style="background:var(--warn)"></i>Break</span>
+      <span><i style="background:var(--good)"></i>Meal</span>
+      <span><i style="background:#7c6ef2"></i>Sleep / wind down</span>
+    </div>
+  </aside>
+</div>
+
+<footer>
+  <button id="expandAll">Expand all</button>
+  <button id="collapseAll">Collapse all</button>
+  <button id="resetAll">Reset this plan's progress</button>
+  <button id="deletePlan" class="btn-danger">Delete this plan</button>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

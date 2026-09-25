@@ -1,0 +1,8 @@
+.env*
+*.pdf
+*.doc
+*.docx
+Notes/
+node_modules/
+.DS_Store
+Thumbs.db
