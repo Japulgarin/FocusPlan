@@ -3,7 +3,7 @@ import {
   loadProgress, saveProgress, loadOpen, saveOpen, loadDayPick, saveDayPick,
   loadKey, saveKey, forgetKey, loadLastForm, saveLastForm,
 } from "./storage.js";
-import { segmentsFor, toMin, nowMinutes, todayISO, formatDay, dateRange } from "./schedule.js";
+import { segmentsFor, toMin, nowMinutes, todayISO, formatDay, dateRange, addDays } from "./schedule.js";
 import { PROVIDERS, PRICES_CHECKED, DEFAULT_PROVIDER, listModels, testConnection } from "./providers.js";
 import { generatePlan } from "./generator.js";
 import { openDemo } from "./demo.js";
@@ -25,6 +25,8 @@ let draft = null;
 let draftInputs = null;
 
 const plan = () => plans.find(p => p.id === activeId) || null;
+// Examples loaded before plans had icons fall back to the example's own icon.
+const iconOf = p => p.icon || EXAMPLE_PLANS.find(d => d.id === p.id)?.emoji || "";
 const taskId = (dayIdx, blockIdx, taskIdx) => `${dayIdx}-${blockIdx}-${taskIdx}`;
 
 function todayIndex(p) {
@@ -89,7 +91,7 @@ function groupTimeRange(segs, group) {
 // ---------------- Header & plan switcher ----------------
 function renderHeader() {
   const p = plan();
-  $("planName").textContent = p ? p.name : "FocusPlan";
+  $("planName").textContent = p ? `${iconOf(p) ? iconOf(p) + " " : ""}${p.name}` : "FocusPlan";
   const dates = p ? `${formatDay(p.startDate)} → ${formatDay(p.endDate)}` : "";
   $("planSub").textContent = !p
     ? "No plan yet. Open ✨ Personalize to create one."
@@ -108,7 +110,8 @@ function renderPlanBar() {
     const btn = document.createElement("button");
     btn.className = "plan-pill" + (p.id === activeId ? " active" : "");
     const removable = p.source === "example";
-    btn.innerHTML = `<span class="dot" style="background:${esc(p.color)}"></span><span>${esc(p.name)}</span><span class="pct">${planProgress(p).pct}%</span>` +
+    const mark = iconOf(p) ? `<span class="icon">${esc(iconOf(p))}</span>` : `<span class="dot" style="background:${esc(p.color)}"></span>`;
+    btn.innerHTML = `${mark}<span>${esc(p.name)}</span><span class="pct">${planProgress(p).pct}%</span>` +
       (removable ? `<span class="x" role="button" title="Remove this example" aria-label="Remove ${esc(p.name)}">✕</span>` : "");
     btn.addEventListener("click", e => {
       if (e.target.classList.contains("x")) return removePlan(p.id);
@@ -136,7 +139,7 @@ function renderPlanBar() {
 }
 
 // Adds an example plan starting today, or jumps to it if it's already loaded.
-function loadExample(id = EXAMPLE_PLANS[0].id) {
+function loadExample(id) {
   if (plans.some(p => p.id === id)) return switchPlan(id);
   if (plans.length >= MAX_PLANS) {
     showTab("personalize");
@@ -148,7 +151,7 @@ function loadExample(id = EXAMPLE_PLANS[0].id) {
   switchPlan(id);
 }
 
-// Examples can be re-added any time, so they're removed without a confirmation dialog.
+// Examples can be re-added any time, so the ✕ removes them without a confirmation dialog.
 function removePlan(id) {
   plans = deletePlan(id);
   if (activeId === id) {
@@ -159,17 +162,19 @@ function removePlan(id) {
   renderAll();
 }
 
-function addDaysISO(iso, n) {
-  const d = new Date(`${iso}T12:00:00`);
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// The picked chip's icon becomes the plan's icon, until the goal text is changed by hand.
+function markChip(icon) {
+  $("planIcon").value = icon;
+  document.querySelectorAll("#promptChips .chip").forEach(b =>
+    b.classList.toggle("active", PROMPT_CHIPS[+b.dataset.chip].emoji === icon));
 }
 
 function usePromptChip(chip) {
   $("goal").value = chip.goal;
+  markChip(chip.emoji);
   const start = $("startDate").value || todayISO();
   $("startDate").value = start;
-  $("endDate").value = addDaysISO(start, chip.days - 1);
+  $("endDate").value = addDays(start, chip.days - 1);
   $("wake").value = chip.template.wake;
   $("sleep").value = chip.template.sleep;
   $("blockMin").value = chip.template.blockMin;
@@ -467,6 +472,7 @@ function formValues() {
     key: $("apiKey").value.trim(),
     model: $("model").value.trim(),
     goal: $("goal").value,
+    icon: $("planIcon").value,
     startDate: $("startDate").value,
     endDate: $("endDate").value,
     template: {
@@ -499,13 +505,19 @@ function providerOptions() {
   if (current) $("provider").value = current;
 }
 
+function refreshKeyUI() {
+  const provider = $("provider").value;
+  const info = PROVIDERS[provider];
+  $("apiKey").value = loadKey(provider);
+  $("apiKey").placeholder = `Paste your ${info.label} key`;
+  $("keyHint").innerHTML = `${loadKey(provider) ? "✓ Saved in this browser · " : ""}Environment variable name: <code>${esc(info.envVar)}</code> · <a href="${esc(info.keyUrl)}" target="_blank" rel="noopener noreferrer">Get an API key</a>`;
+}
+
 function onProviderChange() {
   const provider = $("provider").value;
   const info = PROVIDERS[provider];
   setMsg("testMsg", "");
-  $("apiKey").value = loadKey(provider);
-  $("apiKey").placeholder = `Paste your ${info.label} key`;
-  $("keyHint").innerHTML = `${loadKey(provider) ? "✓ Saved in this browser · " : ""}Environment variable name: <code>${esc(info.envVar)}</code> · <a href="${esc(info.keyUrl)}" target="_blank" rel="noopener noreferrer">Get an API key</a>`;
+  refreshKeyUI();
   $("modelSelect").title = provider === "openrouter"
     ? "Recent OpenRouter models only, free and cheapest first, live prices"
     : `Recent, low-cost models only, cheapest first (prices checked ${PRICES_CHECKED})`;
@@ -534,44 +546,42 @@ async function loadModelList() {
   }
 }
 
+// Saving or forgetting a key only touches key-related UI, never the chosen model.
 function afterKeysChanged() {
   providerOptions();
-  onProviderChange();
+  refreshKeyUI();
   if (!$("keyManager").hidden) renderKeyManager();
 }
 
+// One compact row: pick a provider, paste its key, save or forget it.
+let kmProvider = null;
 function renderKeyManager() {
   const box = $("keyManager");
-  box.innerHTML = Object.entries(PROVIDERS).map(([id, p]) => {
-    const saved = !!loadKey(id);
-    return `
-      <div class="key-row">
-        <div class="name">${esc(p.label)}<small>${esc(p.envVar)}</small></div>
-        <input type="password" data-provider="${id}" autocomplete="off" spellcheck="false"
-          placeholder="${saved ? "Saved — paste a new key to replace it" : "Paste key"}">
-        <div class="row">
-          <span class="key-status ${saved ? "saved" : "none"}">${saved ? "✓ saved" : "not saved"}</span>
-          ${saved ? `<button type="button" data-forget="${id}">Forget</button>` : ""}
-        </div>
-      </div>`;
-  }).join("") + `
-    <div class="actions" style="margin-top:10px">
-      <button type="button" class="btn-primary" id="saveAllKeys">💾 Save keys</button>
+  kmProvider = kmProvider || $("provider").value;
+  const saved = !!loadKey(kmProvider);
+  box.innerHTML = `
+    <div class="row">
+      <select id="kmProvider" aria-label="Provider">${Object.entries(PROVIDERS).map(([id, p]) =>
+        `<option value="${id}">${esc(p.label)}${loadKey(id) ? " ✓" : ""}</option>`).join("")}</select>
+      <input type="password" id="kmKey" autocomplete="off" spellcheck="false"
+        placeholder="${saved ? "✓ Saved — paste to replace" : `Paste ${esc(PROVIDERS[kmProvider].envVar)}`}">
+      <button type="button" id="kmSave">💾 Save</button>
+      <button type="button" id="kmForget" ${saved ? "" : "disabled"}>Forget</button>
     </div>
-    <p class="key-note">🔒 Keys are saved only in this browser on this device. FocusPlan has no server: a key is sent only to its own provider when you test or generate, and it is never written into the code, logged, or pushed to GitHub. Don't save keys on a shared computer.</p>`;
-
-  box.querySelectorAll("[data-forget]").forEach(b => b.addEventListener("click", () => {
-    forgetKey(b.dataset.forget);
+    <p class="key-note">🔒 Saved only in this browser. Sent only to that provider when you test or generate; never logged, never in the code or on GitHub.</p>`;
+  $("kmProvider").value = kmProvider;
+  $("kmProvider").addEventListener("change", e => { kmProvider = e.target.value; renderKeyManager(); });
+  $("kmSave").addEventListener("click", () => {
+    const v = $("kmKey").value.trim();
+    if (!v) return setMsg("testMsg", `Paste a ${PROVIDERS[kmProvider].label} key first.`, "error");
+    saveKey(kmProvider, v);
     afterKeysChanged();
-  }));
-  $("saveAllKeys").addEventListener("click", () => {
-    let count = 0;
-    box.querySelectorAll("input[data-provider]").forEach(inp => {
-      const v = inp.value.trim();
-      if (v) { saveKey(inp.dataset.provider, v); count++; }
-    });
+    setMsg("testMsg", `💾 ${PROVIDERS[kmProvider].label} key saved in this browser.`, "ok");
+  });
+  $("kmForget").addEventListener("click", () => {
+    forgetKey(kmProvider);
     afterKeysChanged();
-    setMsg("testMsg", count ? `💾 Saved ${count} key${count > 1 ? "s" : ""} in this browser.` : "Paste at least one key to save.", count ? "ok" : "error");
+    setMsg("testMsg", `${PROVIDERS[kmProvider].label} key removed from this browser.`, "info");
   });
 }
 
@@ -592,7 +602,7 @@ function renderPreview() {
     return;
   }
   $("previewCard").hidden = false;
-  $("previewName").textContent = draft.name;
+  $("previewName").textContent = `${draft.icon} ${draft.name}`;
   $("previewSub").textContent = `${draft.subtitle} · ${draft.days.length} days${usageLine(draft.usage)}`;
   $("previewBody").innerHTML = draft.days.map(d => `
     <div class="preview-day">
@@ -640,15 +650,15 @@ function initPersonalize() {
     PROMPT_CHIPS.map((c, i) => `<button type="button" class="chip" data-chip="${i}">${c.emoji} ${esc(c.label)}</button>`).join("");
   $("promptChips").querySelectorAll("[data-chip]").forEach(b =>
     b.addEventListener("click", () => usePromptChip(PROMPT_CHIPS[+b.dataset.chip])));
+  const chipGoal = PROMPT_CHIPS.find(c => c.emoji === last.icon)?.goal;
+  if (chipGoal && last.goal === chipGoal) markChip(last.icon);
+  $("goal").addEventListener("input", () => {
+    const chip = PROMPT_CHIPS.find(c => c.emoji === $("planIcon").value);
+    if (chip && $("goal").value !== chip.goal) markChip("");
+  });
   const today = todayISO();
   $("startDate").value = last.startDate && last.startDate >= today ? last.startDate : today;
-  if (last.endDate && last.endDate >= $("startDate").value) {
-    $("endDate").value = last.endDate;
-  } else {
-    const d = new Date(`${$("startDate").value}T12:00:00`);
-    d.setDate(d.getDate() + 6);
-    $("endDate").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }
+  $("endDate").value = last.endDate && last.endDate >= $("startDate").value ? last.endDate : addDays($("startDate").value, 6);
   if (last.template) {
     $("wake").value = last.template.wake || "08:00";
     $("sleep").value = last.template.sleep || "22:00";
@@ -770,11 +780,7 @@ $("resetAll").addEventListener("click", () => {
 $("deletePlan").addEventListener("click", () => {
   const p = plan();
   if (!p || !confirm(`Delete "${p.name}" and its progress? This can't be undone.`)) return;
-  plans = deletePlan(p.id);
-  activeId = loadActiveId(plans);
-  if (activeId) saveActiveId(activeId);
-  loadPlanState();
-  renderAll();
+  removePlan(p.id);
   renderPreview();
 });
 $("jumpBtn").addEventListener("click", () => {

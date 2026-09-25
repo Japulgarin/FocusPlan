@@ -9,6 +9,7 @@ const EXAM_DAY_SEGMENTS = [
 export const B471_PLAN = {
   id: "b471",
   name: "B471 Competitive Strategy — Exam Countdown",
+  icon: "🎓",
   subtitle: "Example plan · Exam: Tuesday, September 29, 2026",
   color: "#5b8cff",
   source: "builtin",

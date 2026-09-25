@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" role="img" aria-label="How FocusPlan works: describe your goal, AI builds the plan, your day block by block, check it off, switch plans and see your progress">
+<style>
+  text { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #e8eaf0; }
+  .cap { font-size: 18px; font-weight: 800; } .sub { font-size: 12px; fill: #8b93a7; }
+  .lbl { font-size: 11px; font-weight: 700; letter-spacing: .05em; fill: #8b93a7; }
+  .body { font-size: 14px; } .strong { font-size: 14px; font-weight: 700; } .tabt { font-size: 13px; font-weight: 700; } .m { fill: #8b93a7; }
+  .btn { font-size: 16px; font-weight: 800; fill: #0b1020; } .ai { font-size: 22px; font-weight: 900; fill: #1a1033; }
+  .dark { font-size: 14px; font-weight: 800; fill: #12141a; } .dark.s { font-size: 12px; font-weight: 700; }
+  .card { fill: #171a21; stroke: #2a2f3a; } .field { fill: #1e222b; stroke: #2a2f3a; } .field.g { stroke: #35d07f; }
+  .tabOff { fill: #1e222b; stroke: #2a2f3a; } .tab { fill: #1e222b; stroke: #2a2f3a; } .box { fill: #1e222b; stroke: #8b93a7; stroke-width: 1.5; }
+  .cover { fill: #1e222b; transform-box: fill-box; transform-origin: right center; }
+  .origin, .grow { transform-box: fill-box; transform-origin: 50% 50%; } .grow { transform-origin: left center; }
+  @keyframes show { 0% { opacity: 0 } 2%, 18% { opacity: 1 } 20%, 100% { opacity: 0 } }
+  @keyframes reveal { 0%, 3% { transform: scaleX(1) } 11%, 100% { transform: scaleX(0) } }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.4) } 3% { opacity: 1; transform: scale(1) } 16% { opacity: 1 } 17%, 100% { opacity: 0 } }
+  @keyframes aiPop { 0% { opacity: 0; transform: scale(0) } 3% { opacity: 1; transform: scale(1.1) } 5% { transform: scale(1) } 6% { opacity: 1 } 8%, 100% { opacity: 0 } }
+  @keyframes pulse { 0%, 13% { transform: scale(1) } 14% { transform: scale(.94) } 15%, 100% { transform: scale(1) } }
+  @keyframes tabOn { 0%, 3% { stroke: #2a2f3a } 4%, 100% { stroke: #5b8cff } }
+  @keyframes pillOn { 0%, 3% { stroke: #2a2f3a } 4%, 100% { stroke: #5b8cff } }
+  @keyframes growY { 0% { transform: scaleY(0) } 2%, 100% { transform: scaleY(1) } }
+  @keyframes growX { 0% { transform: scaleX(0) } 8%, 17% { transform: scaleX(var(--w)) } 18%, 100% { transform: scaleX(0) } }
+  @keyframes slide { 0%, 5% { transform: translateX(0) } 12%, 100% { transform: translateX(var(--dx)) } }
+</style>
+<rect width="640" height="360" rx="16" fill="#0f1115"/>
+
+  <g style="animation:show 20s infinite both;animation-delay:0.00s">
+    <rect x="120" y="18" width="128" height="28" rx="8" class="tab" style="animation:tabOn 20s infinite both;animation-delay:0.00s"/>
+    <text x="184" y="37" text-anchor="middle" class="tabt">✨ Personalize</text>
+    <rect x="254" y="18" width="112" height="28" rx="8" class="tabOff"/><text x="310" y="37" text-anchor="middle" class="tabt m">✅ Checklist</text>
+    <rect x="372" y="18" width="104" height="28" rx="8" class="tabOff"/><text x="424" y="37" text-anchor="middle" class="tabt m">🕒 Timeline</text>
+    <rect x="120" y="58" width="400" height="220" rx="14" class="card"/>
+    <text x="144" y="88" class="lbl">WHAT DO YOU WANT TO ACCOMPLISH?</text>
+    <rect x="144" y="100" width="352" height="50" rx="8" class="field"/>
+    <text x="158" y="131" class="body">Pass my statistics exam on Oct 10</text>
+    <rect x="156" y="112" width="332" height="28" class="cover" style="animation:reveal 20s infinite both;animation-delay:0.00s"/>
+    <g style="animation:pop 20s infinite both;animation-delay:1.60s"><rect x="144" y="164" width="170" height="32" rx="16" class="field"/><text x="158" y="185" class="body">📅 Sep 25 → Oct 10</text></g>
+    <g style="animation:pop 20s infinite both;animation-delay:1.80s"><rect x="324" y="164" width="172" height="32" rx="16" class="field g"/><text x="338" y="185" class="body">✨ DeepSeek · cheapest</text></g>
+    <g style="animation:pulse 20s infinite both;animation-delay:0.00s" class="origin"><rect x="144" y="214" width="352" height="42" rx="10" fill="#5b8cff"/><text x="320" y="241" text-anchor="middle" class="btn">Generate plan</text></g>
+    <text x="320" y="318" text-anchor="middle" class="cap">1 · Describe your goal</text>
+    <text x="320" y="342" text-anchor="middle" class="sub">Open ✨ Personalize, write what you want to achieve, pick your dates and an AI.</text>
+  </g>
+  <g style="animation:show 20s infinite both;animation-delay:4.00s">
+    <g class="origin" style="animation:aiPop 20s infinite both;animation-delay:4.00s"><circle cx="320" cy="154" r="34" fill="#a78bfa"/><text x="320" y="162" text-anchor="middle" class="ai">AI</text></g>
+    <g class="origin" style="animation:pop 20s infinite both;animation-delay:4.90s">
+    <rect x="34" y="84" width="104" height="140" rx="12" class="field"/><text x="46" y="110" class="strong">Thu 25</text><rect x="46" y="130" width="72" height="10" rx="5" fill="#ff5c7a"/><rect x="46" y="152" width="56" height="10" rx="5" fill="#5b8cff"/><rect x="46" y="174" width="84" height="10" rx="5" fill="#35d07f"/></g><g class="origin" style="animation:pop 20s infinite both;animation-delay:5.08s">
+    <rect x="152" y="84" width="104" height="140" rx="12" class="field"/><text x="164" y="110" class="strong">Fri 26</text><rect x="164" y="130" width="72" height="10" rx="5" fill="#ff5c7a"/><rect x="164" y="152" width="56" height="10" rx="5" fill="#5b8cff"/><rect x="164" y="174" width="84" height="10" rx="5" fill="#35d07f"/></g><g class="origin" style="animation:pop 20s infinite both;animation-delay:5.26s">
+    <rect x="270" y="84" width="104" height="140" rx="12" class="field"/><text x="282" y="110" class="strong">Sat 27</text><rect x="282" y="130" width="72" height="10" rx="5" fill="#ff5c7a"/><rect x="282" y="152" width="56" height="10" rx="5" fill="#5b8cff"/><rect x="282" y="174" width="84" height="10" rx="5" fill="#35d07f"/></g><g class="origin" style="animation:pop 20s infinite both;animation-delay:5.44s">
+    <rect x="388" y="84" width="104" height="140" rx="12" class="field"/><text x="400" y="110" class="strong">Sun 28</text><rect x="400" y="130" width="72" height="10" rx="5" fill="#ff5c7a"/><rect x="400" y="152" width="56" height="10" rx="5" fill="#5b8cff"/><rect x="400" y="174" width="84" height="10" rx="5" fill="#35d07f"/></g><g class="origin" style="animation:pop 20s infinite both;animation-delay:5.62s">
+    <rect x="506" y="84" width="104" height="140" rx="12" class="field"/><text x="518" y="110" class="strong">Mon 29</text><rect x="518" y="130" width="72" height="10" rx="5" fill="#ff5c7a"/><rect x="518" y="152" width="56" height="10" rx="5" fill="#5b8cff"/><rect x="518" y="174" width="84" height="10" rx="5" fill="#35d07f"/></g>
+    <text x="320" y="318" text-anchor="middle" class="cap">2 · AI builds your plan</text>
+    <text x="320" y="342" text-anchor="middle" class="sub">A day-by-day plan with a concrete checklist for every focus block.</text>
+  </g>
+  <g style="animation:show 20s infinite both;animation-delay:8.00s">
+    <rect x="40.0" y="96" width="19.0" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.20s"/><rect x="60.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.24s"/><rect x="93.3" y="96" width="5.7" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.28s"/><rect x="100.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.32s"/><rect x="133.3" y="96" width="5.7" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.36s"/><rect x="140.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.40s"/><rect x="173.3" y="96" width="12.3" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.44s"/><rect x="186.7" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.48s"/><rect x="220.0" y="96" width="39.0" height="46" rx="3" fill="#35d07f" class="grow" style="animation:growY 20s infinite both;animation-delay:8.52s"/><rect x="260.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.56s"/><rect x="293.3" y="96" width="5.7" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.60s"/><rect x="300.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.64s"/><rect x="333.3" y="96" width="5.7" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.68s"/><rect x="340.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.72s"/><rect x="373.3" y="96" width="12.3" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.76s"/><rect x="386.7" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.80s"/><rect x="420.0" y="96" width="39.0" height="46" rx="3" fill="#35d07f" class="grow" style="animation:growY 20s infinite both;animation-delay:8.84s"/><rect x="460.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.88s"/><rect x="493.3" y="96" width="5.7" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:8.92s"/><rect x="500.0" y="96" width="32.3" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:8.96s"/><rect x="533.3" y="96" width="5.7" height="46" rx="3" fill="#ffb454" class="grow" style="animation:growY 20s infinite both;animation-delay:9.00s"/><rect x="540.0" y="96" width="29.0" height="46" rx="3" fill="#ff5c7a" class="grow" style="animation:growY 20s infinite both;animation-delay:9.04s"/><rect x="570.0" y="96" width="29.0" height="46" rx="3" fill="#7c6ef2" class="grow" style="animation:growY 20s infinite both;animation-delay:9.08s"/><text x="40.0" y="162" text-anchor="middle" class="sub">08:00</text><text x="200.0" y="162" text-anchor="middle" class="sub">12:00</text><text x="360.0" y="162" text-anchor="middle" class="sub">16:00</text><text x="520.0" y="162" text-anchor="middle" class="sub">20:00</text><text x="600.0" y="162" text-anchor="middle" class="sub">22:00</text>
+    <g style="--dx:270.0px;animation:slide 20s infinite both;animation-delay:8.00s">
+      <line x1="40" y1="88" x2="40" y2="148" stroke="#fff" stroke-width="2.5"/>
+      <path d="M33 80 L47 80 L40 90 Z" fill="#fff"/>
+      <text x="40" y="74" text-anchor="middle" class="strong">NOW</text>
+    </g>
+    <g style="animation:pop 20s infinite both;animation-delay:10.40s">
+      <rect x="160" y="196" width="320" height="62" rx="12" fill="#ff5c7a"/>
+      <text x="320" y="222" text-anchor="middle" class="dark">● FOCUS TIME — HAPPENING NOW</text>
+      <text x="320" y="244" text-anchor="middle" class="dark s">14:30–15:20 · Hypothesis tests</text>
+    </g>
+    <text x="320" y="318" text-anchor="middle" class="cap">3 · Your day, block by block</text>
+    <text x="320" y="342" text-anchor="middle" class="sub">Breaks, meals and sleep are scheduled for you; the Right Now panel shows what to do.</text>
+  </g>
+  <g style="animation:show 20s infinite both;animation-delay:12.00s">
+    <rect x="150" y="18" width="340" height="270" rx="14" class="card"/>
+    <text x="176" y="50" class="strong">Thu, Sep 25 — Today</text>
+    <g style="animation:pop 20s infinite both;animation-delay:15.00s"><rect x="398" y="36" width="68" height="20" rx="10" fill="#35d07f"/><text x="432" y="50" text-anchor="middle" class="dark s">DONE ✓</text></g>
+    <rect x="176" y="68" width="290" height="10" rx="5" class="field"/>
+    <rect x="176" y="68" width="290" height="10" rx="5" fill="#35d07f" class="grow" style="--w:1;animation:growX 20s infinite both;animation-delay:12.80s"/>
+    <rect x="176" y="108" width="20" height="20" rx="5" class="box"/>
+    <g style="animation:pop 20s infinite both;animation-delay:12.80s"><rect x="176" y="108" width="20" height="20" rx="5" fill="#35d07f"/>
+      <path d="M180 118 l5 5 l9 -10" fill="none" stroke="#06210f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <text x="208" y="123" class="body">Read chapter 3 — probability rules</text><rect x="176" y="148" width="20" height="20" rx="5" class="box"/>
+    <g style="animation:pop 20s infinite both;animation-delay:13.35s"><rect x="176" y="148" width="20" height="20" rx="5" fill="#35d07f"/>
+      <path d="M180 158 l5 5 l9 -10" fill="none" stroke="#06210f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <text x="208" y="163" class="body">Solve 10 practice problems</text><rect x="176" y="188" width="20" height="20" rx="5" class="box"/>
+    <g style="animation:pop 20s infinite both;animation-delay:13.90s"><rect x="176" y="188" width="20" height="20" rx="5" fill="#35d07f"/>
+      <path d="M180 198 l5 5 l9 -10" fill="none" stroke="#06210f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <text x="208" y="203" class="body">Flashcards: key formulas</text><rect x="176" y="228" width="20" height="20" rx="5" class="box"/>
+    <g style="animation:pop 20s infinite both;animation-delay:14.45s"><rect x="176" y="228" width="20" height="20" rx="5" fill="#35d07f"/>
+      <path d="M180 238 l5 5 l9 -10" fill="none" stroke="#06210f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <text x="208" y="243" class="body">Summary sheet for today</text>
+    <text x="320" y="318" text-anchor="middle" class="cap">4 · Check it off</text>
+    <text x="320" y="342" text-anchor="middle" class="sub">Tick tasks as you finish them and watch the day fill up.</text>
+  </g>
+  <g style="animation:show 20s infinite both;animation-delay:16.00s">
+    <rect x="60" y="10" width="160" height="32" rx="16" class="field" />
+    <text x="74" y="31" class="tabt">📘 Micro exam</text><text x="206" y="31" text-anchor="end" class="sub">40%</text><rect x="232" y="10" width="166" height="32" rx="16" class="field" style="animation:pillOn 20s infinite both;animation-delay:16.00s"/>
+    <text x="246" y="31" class="tabt">📗 Study week</text><text x="384" y="31" text-anchor="end" class="sub">72%</text><rect x="410" y="10" width="170" height="32" rx="16" class="field" />
+    <text x="424" y="31" class="tabt">📝 Term paper</text><text x="566" y="31" text-anchor="end" class="sub">15%</text>
+    <g style="animation:pop 20s infinite both;animation-delay:16.80s">
+      <rect x="110" y="54" width="420" height="232" rx="14" class="card"/>
+      <text x="136" y="86" class="strong">📗 Balanced Study Week</text>
+      <text x="136" y="106" class="sub">Your status · 18 / 25 tasks done</text>
+      <rect x="136" y="118" width="368" height="12" rx="6" class="field"/>
+      <rect x="136" y="118" width="368" height="12" rx="6" fill="#35d07f" class="grow" style="--w:0.72;animation:growX 20s infinite both;animation-delay:17.00s"/>
+      <text x="140" y="173" class="strong">Thu</text>
+    <rect x="196" y="162" width="250" height="12" rx="6" class="field"/>
+    <rect x="196" y="162" width="250" height="12" rx="6" fill="#35d07f" class="grow" style="--w:1;animation:growX 20s infinite both;animation-delay:17.10s"/>
+    <text x="500" y="173" text-anchor="end" class="sub">100% ✓</text><text x="140" y="211" class="strong">Fri</text>
+    <rect x="196" y="200" width="250" height="12" rx="6" class="field"/>
+    <rect x="196" y="200" width="250" height="12" rx="6" fill="#5b8cff" class="grow" style="--w:0.8;animation:growX 20s infinite both;animation-delay:17.35s"/>
+    <text x="500" y="211" text-anchor="end" class="sub">80%</text><text x="140" y="249" class="strong">Sat</text>
+    <rect x="196" y="238" width="250" height="12" rx="6" class="field"/>
+    <rect x="196" y="238" width="250" height="12" rx="6" fill="#5b8cff" class="grow" style="--w:0.35;animation:growX 20s infinite both;animation-delay:17.60s"/>
+    <text x="500" y="249" text-anchor="end" class="sub">35%</text>
+    </g>
+    <text x="320" y="318" text-anchor="middle" class="cap">5 · Switch plans, see what you've accomplished</text>
+    <text x="320" y="342" text-anchor="middle" class="sub">Keep up to 5 plans; pick one to see how much of each day and the whole plan is done.</text>
+  </g>
+</svg>

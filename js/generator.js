@@ -8,9 +8,10 @@ const STR = { type: "string" };
 export const PLAN_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["name", "days"],
+  required: ["name", "icon", "days"],
   properties: {
     name: STR,
+    icon: STR,
     days: {
       type: "array",
       items: {
@@ -66,10 +67,11 @@ How to fill it in:
 - "tasks": 2–4 short, concrete, checkable actions, each under about 12 words.
 - "label": a few words summing up the day's focus.
 - "name": a short plan name, at most 6 words, saying what the plan is for.
+- "icon": one emoji that fits the kind of goal (e.g. 📘 exam, 💼 work, 🗣️ language, 📝 writing, 🏃 fitness).
 - Sequence the work: new material first, then practice. Use roughly the last quarter of the days for mixed review, a timed practice run under real conditions, and fixing weak spots.
 - If the goal mentions an exam, presentation or deadline on the last date, make that day light: a short confidence review of summary sheets in the morning and no new material.
 
-Return JSON only, shaped as {"name": ..., "days": [{"date", "label", "blocks": [{"short", "blockNums", "tasks"}]}]}.`;
+Return JSON only, shaped as {"name": ..., "icon": ..., "days": [{"date", "label", "blocks": [{"short", "blockNums", "tasks"}]}]}.`;
 }
 
 function str(v, max) {
@@ -79,6 +81,14 @@ function str(v, max) {
 function nameFromGoal(goal) {
   const first = goal.trim().split(/[.!?\n]/)[0].trim();
   return first.length > 48 ? `${first.slice(0, 45).trim()}…` : first || "My focus plan";
+}
+
+// First character of the string if it's an emoji, otherwise "" (keeps letters or text out of icons).
+export function pickIcon(v) {
+  const s = typeof v === "string" ? v.trim() : "";
+  if (!s) return "";
+  const first = new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s)[Symbol.iterator]().next().value.segment;
+  return /\p{Extended_Pictographic}/u.test(first) ? first : "";
 }
 
 function rangeLabel(nums) {
@@ -132,7 +142,7 @@ export function validateAndRepair(raw, { dates, n }) {
     const src = byDate.get(date) || rawDays[i] || {};
     return { date, label: str(src.label, 120) || "Focus day", blocks: repairBlocks(src.blocks, n) };
   });
-  return { name: str(raw.name, 80), days };
+  return { name: str(raw.name, 80), icon: pickIcon(raw.icon), days };
 }
 
 export function checkInputs({ key, model, goal, startDate, endDate, template }) {
@@ -147,7 +157,8 @@ export function checkInputs({ key, model, goal, startDate, endDate, template }) 
   return null;
 }
 
-export async function generatePlan({ provider, key, model, goal, startDate, endDate, template, colorIndex = 0 }) {
+// `icon` comes from the example chip the user picked, if any; otherwise the AI's choice is used.
+export async function generatePlan({ provider, key, model, goal, startDate, endDate, template, icon, colorIndex = 0 }) {
   const problem = checkInputs({ key, model, goal, startDate, endDate, template });
   if (problem) throw new Error(problem);
 
@@ -181,6 +192,7 @@ export async function generatePlan({ provider, key, model, goal, startDate, endD
       return {
         id: `p_${Date.now().toString(36)}`,
         name: repaired.name.length >= 3 ? repaired.name : nameFromGoal(goal),
+        icon: icon || repaired.icon || "🎯",
         subtitle: `${formatDay(startDate)} → ${formatDay(endDate)} · made with ${model}`,
         color: PALETTE[colorIndex % PALETTE.length],
         source: "ai",

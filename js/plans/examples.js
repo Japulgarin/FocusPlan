@@ -1,4 +1,4 @@
-import { dateRange, formatDay } from "../schedule.js";
+import { addDays, dateRange, formatDay } from "../schedule.js";
 import { STUDY_EXAMPLE } from "./study.js";
 import { MICRO_EXAMPLE } from "./micro.js";
 
@@ -15,17 +15,9 @@ export const PROMPT_CHIPS = [
     goal: "Learn basic Spanish for a trip: greetings, numbers, ordering food, asking for directions, small talk. Speak out loud every day and review vocabulary." },
   { emoji: "📝", label: "Project", days: 5, template: { wake: "08:00", sleep: "22:00", blockMin: 50, breakMin: 10 },
     goal: "Finish my 3,000-word term paper on renewable energy: research, outline, draft each section, edit, references, and submit on the last day." },
+  { emoji: "💼", label: "Work", days: 5, template: { wake: "07:30", sleep: "22:00", blockMin: 50, breakMin: 10 },
+    goal: "Get on top of my work week: finish the quarterly report, prepare Thursday's client presentation, clear my email backlog, and plan next week. Protect deep-focus time and batch small tasks." },
 ];
-
-function addDays(iso, n) {
-  const d = new Date(`${iso}T12:00:00`);
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-export function endDateFor(startISO, days) {
-  return addDays(startISO, days - 1);
-}
 
 function rangeLabel(nums) {
   return nums.length === 1 ? `Block ${nums[0]}` : `Blocks ${nums[0]}–${nums[nums.length - 1]}`;
@@ -33,11 +25,12 @@ function rangeLabel(nums) {
 
 // Turns an example definition into a normal plan whose first day is startISO.
 export function instantiateExample(def, startISO) {
-  const endISO = endDateFor(startISO, def.days.length);
+  const endISO = addDays(startISO, def.days.length - 1);
   const dates = dateRange(startISO, endISO);
   return {
     id: def.id,
     name: def.name,
+    icon: def.emoji,
     subtitle: `${formatDay(startISO)} → ${formatDay(endISO)} · example made with DeepSeek`,
     color: def.color,
     source: "example",

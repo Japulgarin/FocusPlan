@@ -21,9 +21,18 @@ export function nowMinutes() {
   return d.getHours() * 60 + d.getMinutes();
 }
 
-export function todayISO() {
-  const d = new Date();
+function toISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function todayISO() {
+  return toISO(new Date());
+}
+
+export function addDays(iso, n) {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return toISO(d);
 }
 
 // Builds one day's segments: wake, focus blocks with short breaks, a long break every
@@ -83,12 +92,7 @@ export function segmentsFor(plan, day) {
 
 export function dateRange(startISO, endISO) {
   const out = [];
-  const d = new Date(`${startISO}T12:00:00`);
-  const end = new Date(`${endISO}T12:00:00`);
-  while (d <= end) {
-    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
-    d.setDate(d.getDate() + 1);
-  }
+  for (let iso = startISO; iso <= endISO; iso = addDays(iso, 1)) out.push(iso);
   return out;
 }
 

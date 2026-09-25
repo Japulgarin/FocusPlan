@@ -149,12 +149,8 @@ async function anthropicClient(key) {
   return new AnthropicSDK({ apiKey: key, dangerouslyAllowBrowser: true });
 }
 
-const ADAPTIVE_THINKING = /opus-4-[6-9]|opus-5|sonnet-4-6|sonnet-5|fable|mythos/;
-const SERVER_FALLBACK = /^claude-(opus-5|fable-5-1)$/;
-
-export function usesServerFallback(provider, model) {
-  return provider === "anthropic" && SERVER_FALLBACK.test(model);
-}
+// Of the curated Claude models, Sonnet 5 supports adaptive thinking; Haiku 4.5 does not.
+const ADAPTIVE_THINKING = /sonnet-5/;
 
 async function anthropicModels(key) {
   const client = await anthropicClient(key);
@@ -174,9 +170,7 @@ async function anthropicGenerate(key, model, { system, user, schema, useSchema, 
   if (ADAPTIVE_THINKING.test(model)) params.thinking = { type: "adaptive" };
   if (useSchema) params.output_config = { format: { type: "json_schema", schema } };
 
-  const message = usesServerFallback("anthropic", model)
-    ? await client.beta.messages.stream({ ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }).finalMessage()
-    : await client.messages.stream(params).finalMessage();
+  const message = await client.messages.stream(params).finalMessage();
 
   if (message.stop_reason === "refusal") {
     throw new ProviderError("Claude declined this request. Try rephrasing the goal.");

@@ -61,7 +61,7 @@
             </div>
             <p class="hint key-hint" id="keyHint"></p>
             <div class="msg" id="testMsg" role="status"></div>
-            <button type="button" class="link-btn" id="toggleKeys" aria-expanded="false">🔑 Manage saved keys for all providers</button>
+            <button type="button" class="link-btn" id="toggleKeys" aria-expanded="false">🔑 Save keys for other providers</button>
             <div class="key-manager" id="keyManager" hidden></div>
           </div>
         </div>
@@ -69,6 +69,7 @@
         <div class="step"><span class="step-num">2</span> What do you want to accomplish?</div>
         <div class="field full">
           <div class="chips" id="promptChips" aria-label="Example prompts"></div>
+          <input id="planIcon" type="hidden">
           <textarea id="goal" aria-label="What do you want to accomplish?" placeholder="Say what you want to achieve, the topics or parts, and what you find hardest. Tip: tap an example above."></textarea>
         </div>
 
