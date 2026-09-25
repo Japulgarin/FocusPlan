@@ -4,10 +4,10 @@ import {
   loadKey, saveKey, forgetKey, loadLastForm, saveLastForm,
 } from "./storage.js";
 import { segmentsFor, toMin, nowMinutes, todayISO, formatDay, dateRange } from "./schedule.js";
-import { PROVIDERS, PRICES_CHECKED, DEFAULT_PROVIDER, listModels, testConnection, usesServerFallback } from "./providers.js";
+import { PROVIDERS, PRICES_CHECKED, DEFAULT_PROVIDER, listModels, testConnection } from "./providers.js";
 import { generatePlan } from "./generator.js";
 import { openDemo } from "./demo.js";
-import { microExample, MICRO_EXAMPLE_ID, MICRO_GOAL } from "./plans/micro.js";
+import { EXAMPLE_PLANS, PROMPT_CHIPS, instantiateExample } from "./plans/examples.js";
 
 const $ = id => document.getElementById(id);
 
@@ -107,8 +107,13 @@ function renderPlanBar() {
   plans.forEach(p => {
     const btn = document.createElement("button");
     btn.className = "plan-pill" + (p.id === activeId ? " active" : "");
-    btn.innerHTML = `<span class="dot" style="background:${esc(p.color)}"></span><span>${esc(p.name)}</span><span class="pct">${planProgress(p).pct}%</span>`;
-    btn.addEventListener("click", () => switchPlan(p.id));
+    const removable = p.source === "example";
+    btn.innerHTML = `<span class="dot" style="background:${esc(p.color)}"></span><span>${esc(p.name)}</span><span class="pct">${planProgress(p).pct}%</span>` +
+      (removable ? `<span class="x" role="button" title="Remove this example" aria-label="Remove ${esc(p.name)}">✕</span>` : "");
+    btn.addEventListener("click", e => {
+      if (e.target.classList.contains("x")) return removePlan(p.id);
+      switchPlan(p.id);
+    });
     bar.appendChild(btn);
   });
   const add = document.createElement("button");
@@ -118,30 +123,59 @@ function renderPlanBar() {
   add.title = add.disabled ? `You have ${MAX_PLANS} plans. Delete one to make room.` : "Create a plan with AI";
   add.addEventListener("click", () => showTab("personalize"));
   bar.appendChild(add);
+
+  EXAMPLE_PLANS.filter(def => !plans.some(p => p.id === def.id)).forEach(def => {
+    const ex = document.createElement("button");
+    ex.className = "plan-pill example";
+    ex.textContent = `${def.emoji} + ${def.label} example`;
+    ex.title = `Load a ready-made plan: ${def.summary}. Starts today.`;
+    ex.disabled = plans.length >= MAX_PLANS;
+    ex.addEventListener("click", () => loadExample(def.id));
+    bar.appendChild(ex);
+  });
 }
 
-// Adds the Microeconomics example (starting today) or jumps to it if it's already loaded.
-function loadExamplePlan() {
-  if (plans.some(p => p.id === MICRO_EXAMPLE_ID)) return switchPlan(MICRO_EXAMPLE_ID);
+// Adds an example plan starting today, or jumps to it if it's already loaded.
+function loadExample(id = EXAMPLE_PLANS[0].id) {
+  if (plans.some(p => p.id === id)) return switchPlan(id);
   if (plans.length >= MAX_PLANS) {
     showTab("personalize");
-    setMsg("genMsg", `You already have ${MAX_PLANS} plans. Delete one to load the example.`, "error");
+    setMsg("genMsg", `You already have ${MAX_PLANS} plans. Delete one to load an example.`, "error");
     return;
   }
-  plans = addPlan(microExample(todayISO()));
-  switchPlan(MICRO_EXAMPLE_ID);
+  const def = EXAMPLE_PLANS.find(d => d.id === id);
+  plans = addPlan(instantiateExample(def, todayISO()));
+  switchPlan(id);
 }
 
-function useExampleGoal() {
-  $("goal").value = MICRO_GOAL;
-  const start = todayISO();
-  const end = new Date(`${start}T12:00:00`);
-  end.setDate(end.getDate() + 3);
+// Examples can be re-added any time, so they're removed without a confirmation dialog.
+function removePlan(id) {
+  plans = deletePlan(id);
+  if (activeId === id) {
+    activeId = loadActiveId(plans);
+    if (activeId) saveActiveId(activeId);
+    loadPlanState();
+  }
+  renderAll();
+}
+
+function addDaysISO(iso, n) {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function usePromptChip(chip) {
+  $("goal").value = chip.goal;
+  const start = $("startDate").value || todayISO();
   $("startDate").value = start;
-  $("endDate").value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+  $("endDate").value = addDaysISO(start, chip.days - 1);
+  $("wake").value = chip.template.wake;
+  $("sleep").value = chip.template.sleep;
+  $("blockMin").value = chip.template.blockMin;
+  $("breakMin").value = chip.template.breakMin;
   persistForm();
-  setMsg("genMsg", "Example goal filled in (4 days from today). Add your key, test the connection, then Generate.", "info");
-  $("goal").scrollIntoView({ behavior: "smooth", block: "center" });
+  setMsg("genMsg", `${chip.emoji} ${chip.label} example filled in: ${chip.days} days, ${chip.template.wake}–${chip.template.sleep}. Edit anything, then Generate.`, "info");
 }
 
 function switchPlan(id) {
@@ -444,46 +478,38 @@ function formValues() {
   };
 }
 
+// Keys are never part of the saved form; they're only stored through the explicit Save buttons.
 function persistForm() {
-  const v = formValues();
-  const { key, ...rest } = v;
-  saveLastForm(rest);
-  if ($("rememberKey").checked && key) saveKey(v.provider, key);
+  const form = formValues();
+  delete form.key;
+  saveLastForm(form);
 }
 
-function fillModelSelect(models) {
+function fillModelSelect(models, keep = $("model").value) {
   const sel = $("modelSelect");
-  sel.innerHTML = `<option value="">— choose a model —</option>` +
-    models.map(m => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join("");
-  const current = $("model").value;
-  if (models.some(m => m.id === current)) sel.value = current;
+  sel.innerHTML = models.map(m => `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join("");
+  sel.value = models.some(m => m.id === keep) ? keep : (models[0] ? models[0].id : "");
+  $("model").value = sel.value;
 }
 
-function updateModelHint() {
-  const provider = $("provider").value;
-  const model = $("model").value.trim();
-  const info = PROVIDERS[provider];
-  let hint = provider === "openrouter"
-    ? "Recent OpenRouter models only (no “pro” or premium models), free and cheapest first, with live prices."
-    : `Recent, low-cost ${info.label} models only, cheapest first (prices checked ${PRICES_CHECKED}). “Load models” keeps the ones your key can use.`;
-  if (usesServerFallback(provider, model)) {
-    hint += " · For this model FocusPlan turns on Anthropic's server-side fallback: if Claude declines a request, it's retried on another Claude model automatically.";
-  }
-  $("modelHint").textContent = hint;
+function providerOptions() {
+  const current = $("provider").value;
+  $("provider").innerHTML = Object.entries(PROVIDERS).map(([id, p]) =>
+    `<option value="${id}">${esc(p.label)}${loadKey(id) ? " — ✓ key saved" : ""}</option>`).join("");
+  if (current) $("provider").value = current;
 }
 
 function onProviderChange() {
   const provider = $("provider").value;
   const info = PROVIDERS[provider];
-  const saved = loadKey(provider);
   setMsg("testMsg", "");
-  $("apiKey").value = saved;
-  $("rememberKey").checked = !!saved;
-  $("keyHint").innerHTML = `Environment variable name: <code>${esc(info.envVar)}</code> · <a href="${esc(info.keyUrl)}" target="_blank" rel="noopener noreferrer">Get an API key</a>`;
-  fillModelSelect(info.presets);
-  $("model").value = info.defaultModel;
-  if (info.presets.some(m => m.id === info.defaultModel)) $("modelSelect").value = info.defaultModel;
-  updateModelHint();
+  $("apiKey").value = loadKey(provider);
+  $("apiKey").placeholder = `Paste your ${info.label} key`;
+  $("keyHint").innerHTML = `${loadKey(provider) ? "✓ Saved in this browser · " : ""}Environment variable name: <code>${esc(info.envVar)}</code> · <a href="${esc(info.keyUrl)}" target="_blank" rel="noopener noreferrer">Get an API key</a>`;
+  $("modelSelect").title = provider === "openrouter"
+    ? "Recent OpenRouter models only, free and cheapest first, live prices"
+    : `Recent, low-cost models only, cheapest first (prices checked ${PRICES_CHECKED})`;
+  fillModelSelect(info.presets, info.defaultModel);
   if (provider === "openrouter") loadModelList();
 }
 
@@ -491,25 +517,62 @@ async function loadModelList() {
   const provider = $("provider").value;
   const key = $("apiKey").value.trim();
   if (!key && provider !== "openrouter") {
-    setMsg("genMsg", "Paste your API key first, then load models.", "error");
+    setMsg("testMsg", "Paste your API key first, then press ↻ to check which models it can use.", "error");
     return;
   }
   $("loadModels").disabled = true;
-  setMsg("genMsg", `Loading models from ${PROVIDERS[provider].label}…`, "info", true);
+  setMsg("testMsg", `Loading models from ${PROVIDERS[provider].label}…`, "info", true);
   try {
     const models = await listModels(provider, key);
     if ($("provider").value !== provider) return;
     fillModelSelect(models.length ? models : PROVIDERS[provider].presets);
-    if (!$("model").value && models.length) {
-      $("model").value = models[0].id;
-      $("modelSelect").value = models[0].id;
-    }
-    setMsg("genMsg", `${models.length} models loaded, free and cheapest first.`, "info");
+    setMsg("testMsg", `${models.length} models available, cheapest first.`, "info");
   } catch (e) {
-    setMsg("genMsg", e.message, "error");
+    setMsg("testMsg", e.message, "error");
   } finally {
     $("loadModels").disabled = false;
   }
+}
+
+function afterKeysChanged() {
+  providerOptions();
+  onProviderChange();
+  if (!$("keyManager").hidden) renderKeyManager();
+}
+
+function renderKeyManager() {
+  const box = $("keyManager");
+  box.innerHTML = Object.entries(PROVIDERS).map(([id, p]) => {
+    const saved = !!loadKey(id);
+    return `
+      <div class="key-row">
+        <div class="name">${esc(p.label)}<small>${esc(p.envVar)}</small></div>
+        <input type="password" data-provider="${id}" autocomplete="off" spellcheck="false"
+          placeholder="${saved ? "Saved — paste a new key to replace it" : "Paste key"}">
+        <div class="row">
+          <span class="key-status ${saved ? "saved" : "none"}">${saved ? "✓ saved" : "not saved"}</span>
+          ${saved ? `<button type="button" data-forget="${id}">Forget</button>` : ""}
+        </div>
+      </div>`;
+  }).join("") + `
+    <div class="actions" style="margin-top:10px">
+      <button type="button" class="btn-primary" id="saveAllKeys">💾 Save keys</button>
+    </div>
+    <p class="key-note">🔒 Keys are saved only in this browser on this device. FocusPlan has no server: a key is sent only to its own provider when you test or generate, and it is never written into the code, logged, or pushed to GitHub. Don't save keys on a shared computer.</p>`;
+
+  box.querySelectorAll("[data-forget]").forEach(b => b.addEventListener("click", () => {
+    forgetKey(b.dataset.forget);
+    afterKeysChanged();
+  }));
+  $("saveAllKeys").addEventListener("click", () => {
+    let count = 0;
+    box.querySelectorAll("input[data-provider]").forEach(inp => {
+      const v = inp.value.trim();
+      if (v) { saveKey(inp.dataset.provider, v); count++; }
+    });
+    afterKeysChanged();
+    setMsg("testMsg", count ? `💾 Saved ${count} key${count > 1 ? "s" : ""} in this browser.` : "Paste at least one key to save.", count ? "ok" : "error");
+  });
 }
 
 function usageLine(u) {
@@ -563,13 +626,20 @@ async function runGenerate(inputs) {
 
 function initPersonalize() {
   const provSel = $("provider");
-  provSel.innerHTML = Object.entries(PROVIDERS).map(([id, p]) => `<option value="${id}">${esc(p.label)}</option>`).join("");
-
   const last = loadLastForm();
+  providerOptions();
   provSel.value = last.provider && PROVIDERS[last.provider] ? last.provider : DEFAULT_PROVIDER;
   onProviderChange();
-  if (last.model) $("model").value = last.model;
+  if (last.model && [...$("modelSelect").options].some(o => o.value === last.model)) {
+    $("modelSelect").value = last.model;
+    $("model").value = last.model;
+  }
   if (last.goal) $("goal").value = last.goal;
+
+  $("promptChips").innerHTML = `<span class="hint" style="margin:0;align-self:center">Examples:</span>` +
+    PROMPT_CHIPS.map((c, i) => `<button type="button" class="chip" data-chip="${i}">${c.emoji} ${esc(c.label)}</button>`).join("");
+  $("promptChips").querySelectorAll("[data-chip]").forEach(b =>
+    b.addEventListener("click", () => usePromptChip(PROMPT_CHIPS[+b.dataset.chip])));
   const today = todayISO();
   $("startDate").value = last.startDate && last.startDate >= today ? last.startDate : today;
   if (last.endDate && last.endDate >= $("startDate").value) {
@@ -585,37 +655,29 @@ function initPersonalize() {
     $("blockMin").value = last.template.blockMin || 50;
     $("breakMin").value = last.template.breakMin || 10;
   }
-  updateModelHint();
-
   provSel.addEventListener("change", () => { onProviderChange(); persistForm(); });
   $("modelSelect").addEventListener("change", e => {
-    if (e.target.value) $("model").value = e.target.value;
-    updateModelHint();
+    $("model").value = e.target.value;
     persistForm();
   });
-  $("model").addEventListener("input", updateModelHint);
-  ["goal", "startDate", "endDate", "wake", "sleep", "blockMin", "breakMin", "model"].forEach(id =>
+  ["goal", "startDate", "endDate", "wake", "sleep", "blockMin", "breakMin"].forEach(id =>
     $(id).addEventListener("change", persistForm));
 
-  $("rememberKey").addEventListener("change", e => {
-    const provider = $("provider").value;
-    if (e.target.checked && $("apiKey").value.trim()) saveKey(provider, $("apiKey").value.trim());
-    if (!e.target.checked) forgetKey(provider);
+  $("saveKey").addEventListener("click", () => {
+    const { provider, key } = formValues();
+    if (!key) return setMsg("testMsg", `Paste your ${PROVIDERS[provider].label} key first.`, "error");
+    saveKey(provider, key);
+    afterKeysChanged();
+    setMsg("testMsg", `💾 ${PROVIDERS[provider].label} key saved in this browser. Press 🔌 Test to check it.`, "ok");
   });
-  $("apiKey").addEventListener("change", () => {
-    if ($("rememberKey").checked && $("apiKey").value.trim()) saveKey($("provider").value, $("apiKey").value.trim());
-  });
-  $("forgetKey").addEventListener("click", () => {
-    forgetKey($("provider").value);
-    $("apiKey").value = "";
-    $("rememberKey").checked = false;
-    setMsg("genMsg", "Key removed from this browser.", "info");
+  $("toggleKeys").addEventListener("click", () => {
+    const box = $("keyManager");
+    box.hidden = !box.hidden;
+    $("toggleKeys").setAttribute("aria-expanded", String(!box.hidden));
+    if (!box.hidden) renderKeyManager();
   });
 
   $("loadModels").addEventListener("click", loadModelList);
-  $("loadExample").addEventListener("click", loadExamplePlan);
-  $("useExampleGoal").addEventListener("click", useExampleGoal);
-  $("goalExampleBtn").addEventListener("click", useExampleGoal);
 
   $("testBtn").addEventListener("click", async () => {
     const { provider, key, model } = formValues();
@@ -680,7 +742,7 @@ const startDemo = () => openDemo({
     showTab("personalize");
     $("goal").focus();
   },
-  onExample: loadExamplePlan,
+  onExample: () => loadExample(EXAMPLE_PLANS[0].id),
 });
 $("howItWorks").addEventListener("click", startDemo);
 

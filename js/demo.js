@@ -6,8 +6,47 @@ const STEPS = [
   { title: "Open ✨ Personalize and describe your goal", text: "Click the ✨ Personalize tab (first tab at the top), write what you want to achieve and pick your dates. Cheapest AI models are listed first." },
   { title: "AI builds your plan", text: "The AI turns your goal into a day-by-day plan with a concrete checklist for every focus block." },
   { title: "Your day, block by block", text: "Focus blocks, breaks, meals and sleep are scheduled for you. The Right Now panel always shows what to do." },
-  { title: "Check it off", text: "Tick tasks as you finish them and watch the day fill up. Keep up to 5 plans side by side." },
+  { title: "Check it off", text: "Tick tasks as you finish them and watch the day fill up." },
+  { title: "Switch plans, see what you've accomplished", text: "Keep up to 5 plans side by side. Pick one at the top to see your status: how much of each day and the whole plan is done." },
 ];
+
+const PLAN_PILLS = [
+  { label: "📘 Micro exam", pct: 40, x: 60, w: 160 },
+  { label: "📗 Study week", pct: 0, x: 232, w: 166 },
+  { label: "📝 Term paper", pct: 15, x: 410, w: 170 },
+];
+const PLAN_DAYS = [["Thu", 100], ["Fri", 80], ["Sat", 35]];
+const PLAN_TASKS = 25;
+const PLAN_DONE = 18;
+
+function plansScene() {
+  const pills = PLAN_PILLS.map((p, i) => `
+    <g class="d5-pill">
+      <rect id="d5Pill${i}" x="${p.x}" y="10" width="${p.w}" height="32" rx="16" fill="#1e222b" stroke="#2a2f3a" stroke-width="1.5"/>
+      <text x="${p.x + 14}" y="31" class="d-tab">${p.label}</text>
+      <text id="d5PillPct${i}" x="${p.x + p.w - 14}" y="31" text-anchor="end" class="d-small">${p.pct}%</text>
+    </g>`).join("");
+  const rows = PLAN_DAYS.map(([d], i) => {
+    const y = 172 + i * 40;
+    return `<g class="d5-row">
+      <text x="140" y="${y + 13}" class="d-strong">${d}</text>
+      <rect x="196" y="${y + 2}" width="250" height="12" rx="6" fill="#1e222b"/>
+      <rect class="d5-daybar" x="196" y="${y + 2}" width="0" height="12" rx="6" fill="#5b8cff"/>
+      <text class="d5-daypct d-small" x="500" y="${y + 13}" text-anchor="end">0%</text>
+    </g>`;
+  }).join("");
+  return `${pills}
+    <g id="d5Card">
+      <rect x="110" y="58" width="420" height="250" rx="14" fill="#171a21" stroke="#2a2f3a"/>
+      <text x="136" y="92" class="d-strong">📗 Balanced Study Week</text>
+      <text x="136" y="112" class="d-small">Your status</text>
+      <rect x="136" y="124" width="368" height="12" rx="6" fill="#1e222b"/>
+      <rect id="d5Prog" x="136" y="124" width="0" height="12" rx="6" fill="#35d07f"/>
+      <text id="d5Count" x="504" y="156" text-anchor="end" class="d-small">0 / ${PLAN_TASKS} tasks done</text>
+      ${rows}
+    </g>
+    <path id="d5Cursor" d="M0 0 L0 22 L6 17 L10 26 L14 24 L10 15 L18 15 Z" fill="#fff" stroke="#0f1115" stroke-width="1.5"/>`;
+}
 
 const COLORS = { study: "#ff5c7a", break: "#ffb454", wake: "#ffb454", other: "#ffb454", meal: "#35d07f", wind: "#7c6ef2" };
 const GOAL = "Pass my statistics exam on Oct 10";
@@ -37,22 +76,25 @@ function dayBar() {
     `<rect class="d-seg" x="${px(s.start).toFixed(1)}" y="${y}" width="${Math.max(1, px(s.end) - px(s.start) - 1).toFixed(1)}" height="${h}" rx="3" fill="${COLORS[s.type]}"/>`).join("");
   const labels = segs.filter(s => s.type === "meal" || s.type === "wind").map(s => {
     const cx = (px(s.start) + px(s.end)) / 2;
-    return `<text class="d-seglabel d-small" x="${cx.toFixed(1)}" y="${y + h + 20}" text-anchor="middle">${s.type === "wind" ? "Sleep" : s.label}</text>`;
+    return `<text class="d-seglabel d-strong" x="${cx.toFixed(1)}" y="${y + h + 40}" text-anchor="middle" style="fill:${COLORS[s.type]}">${s.type === "wind" ? "Sleep" : s.label}</text>`;
+  }).join("");
+  const ticks = [8, 10, 12, 14, 16, 18, 20, 22].map(hr => {
+    const x = px(`${String(hr).padStart(2, "0")}:00`).toFixed(1);
+    return `<line x1="${x}" y1="${y + h + 2}" x2="${x}" y2="${y + h + 8}" stroke="#8b93a7"/>
+      <text class="d-small" x="${x}" y="${y + h + 21}" text-anchor="middle">${String(hr).padStart(2, "0")}:00</text>`;
   }).join("");
   const nowX = px("14:45");
   return { svg: `
-    <text x="${x0}" y="${y - 12}" class="d-small">08:00</text>
-    <text x="${x0 + width}" y="${y - 12}" class="d-small" text-anchor="end">22:00</text>
-    ${rects}${labels}
+    ${rects}${ticks}${labels}
     <g id="dNow">
       <line x1="0" y1="${y - 8}" x2="0" y2="${y + h + 6}" stroke="#fff" stroke-width="2.5"/>
       <path d="M-7 ${y - 16} L7 ${y - 16} L0 ${y - 6} Z" fill="#fff"/>
       <text x="0" y="${y - 22}" text-anchor="middle" class="d-strong">NOW</text>
     </g>
     <g id="dRightNow">
-      <rect x="160" y="228" width="320" height="62" rx="12" fill="#ff5c7a"/>
-      <text x="320" y="254" text-anchor="middle" class="d-dark">● FOCUS TIME — HAPPENING NOW</text>
-      <text x="320" y="276" text-anchor="middle" class="d-dark d-small">14:30–15:20 · Hypothesis tests</text>
+      <rect x="160" y="236" width="320" height="62" rx="12" fill="#ff5c7a"/>
+      <text x="320" y="262" text-anchor="middle" class="d-dark">● FOCUS TIME — HAPPENING NOW</text>
+      <text x="320" y="284" text-anchor="middle" class="d-dark d-small">14:30–15:20 · Hypothesis tests</text>
     </g>`, x0, nowX };
 }
 
@@ -108,7 +150,12 @@ function markup(bar) {
       </g>
       <g id="d3">${bar.svg}</g>
       <g id="d4">${checklist()}</g>
+      <g id="d5">${plansScene()}</g>
     </svg>
+    <div class="demo-player">
+      <button type="button" id="demoPlay" aria-label="Pause">⏸</button>
+      <div class="demo-progress" id="demoProgress" title="Click to jump"><div class="demo-progress-fill" id="demoProgressFill"></div></div>
+    </div>
     <div class="demo-caption">
       <div class="demo-dots">${STEPS.map((s, i) => `<button type="button" class="demo-dot" data-step="${i}" aria-label="Step ${i + 1}: ${s.title}"></button>`).join("")}</div>
       <h3 id="demoTitle"></h3>
@@ -126,7 +173,7 @@ function markup(bar) {
 function buildTimeline(gsap, root, bar, setStep) {
   const q = sel => root.querySelectorAll(sel);
   const one = sel => root.querySelector(sel);
-  const scenes = ["#d1", "#d2", "#d3", "#d4"].map(one);
+  const scenes = ["#d1", "#d2", "#d3", "#d4", "#d5"].map(one);
   const goal = one("#dGoal");
   const caret = one("#dCaret");
   const typed = { n: 0 };
@@ -198,7 +245,45 @@ function buildTimeline(gsap, root, bar, setStep) {
       .to(row.querySelector(".d-task"), { attr: { fill: "#8b93a7" }, duration: 0.2 }, "<")
       .to(one("#dProg"), { attr: { width: 290 * ((i + 1) / TASKS.length) }, duration: 0.3 }, "<");
   });
-  tl.fromTo(one("#dDone"), { scale: 0, autoAlpha: 0, transformOrigin: "50% 50%" }, { scale: 1, autoAlpha: 1, duration: 0.4, ease: "back.out(2.5)" });
+  tl.fromTo(one("#dDone"), { scale: 0, autoAlpha: 0, transformOrigin: "50% 50%" }, { scale: 1, autoAlpha: 1, duration: 0.4, ease: "back.out(2.5)" })
+    .to(scenes[3], { autoAlpha: 0, duration: 0.35 }, "+=1");
+
+  // 5 — several plans: pick one, see its status
+  const done = { n: 0 };
+  const count = one("#d5Count");
+  const pct1 = one("#d5PillPct1");
+  tl.addLabel("s4")
+    .call(() => setStep(4))
+    .set(one("#d5Card"), { autoAlpha: 0 })
+    .set(one("#d5Pill1"), { attr: { stroke: "#2a2f3a" } })
+    .set(q(".d5-daybar"), { attr: { width: 0 } })
+    .set(one("#d5Prog"), { attr: { width: 0 } })
+    .set(one("#d5Cursor"), { x: 560, y: 290 })
+    .call(() => { done.n = 0; count.textContent = `0 / ${PLAN_TASKS} tasks done`; pct1.textContent = "0%"; q(".d5-daypct").forEach(t => (t.textContent = "0%")); })
+    .to(scenes[4], { autoAlpha: 1, duration: 0.3 })
+    .from(q(".d5-pill"), { y: -10, autoAlpha: 0, stagger: 0.12, duration: 0.35 })
+    .to(one("#d5Cursor"), { x: 300, y: 30, duration: 0.8, ease: "power3.inOut" })
+    .to(one("#d5Pill1"), { attr: { stroke: "#5b8cff" }, duration: 0.15 })
+    .fromTo(one("#d5Pill1"), { scale: 1, transformOrigin: "50% 50%" }, { scale: 0.94, duration: 0.1, yoyo: true, repeat: 1 }, "<")
+    .to(one("#d5Card"), { autoAlpha: 1, duration: 0.35 })
+    .to(one("#d5Cursor"), { x: 560, y: 290, duration: 0.5 }, "<");
+  q(".d5-daybar").forEach((bar, i) => {
+    const pct = PLAN_DAYS[i][1];
+    const label = q(".d5-daypct")[i];
+    tl.to(bar, {
+      attr: { width: 250 * pct / 100, fill: pct === 100 ? "#35d07f" : "#5b8cff" }, duration: 0.6,
+      onUpdate() { label.textContent = `${Math.round(this.progress() * pct)}%${pct === 100 && this.progress() === 1 ? " ✓" : ""}`; },
+    }, i ? "-=0.3" : "+=0.1");
+  });
+  tl.to(done, {
+    n: PLAN_DONE, duration: 1, ease: "power1.out",
+    onUpdate: () => {
+      const n = Math.round(done.n);
+      count.textContent = `${n} / ${PLAN_TASKS} tasks done`;
+      pct1.textContent = `${Math.round((n / PLAN_TASKS) * 100)}%`;
+    },
+  }, "-=0.9")
+    .to(one("#d5Prog"), { attr: { width: 368 * PLAN_DONE / PLAN_TASKS }, duration: 1, ease: "power1.out" }, "<");
   return tl;
 }
 
@@ -269,16 +354,36 @@ export async function openDemo({ onCreate, onExample, onClose } = {}) {
   } catch (e) {
     // Offline: show the final scene and let the dots flip through the captions.
     overlay.querySelector("#d4").style.opacity = 1;
-    ["#d1", "#d2", "#d3"].forEach(s => (overlay.querySelector(s).style.display = "none"));
+    ["#d1", "#d2", "#d3", "#d5"].forEach(s => (overlay.querySelector(s).style.display = "none"));
     overlay.querySelector("#demoReplay").hidden = true;
+    overlay.querySelector(".demo-player").style.display = "none";
     overlay.querySelectorAll(".demo-dot").forEach(d => d.addEventListener("click", () => setStep(+d.dataset.step)));
     return;
   }
   if (!overlay.isConnected) return;
 
   tl = buildTimeline(gsap, overlay, bar, setStep);
+  const fill = overlay.querySelector("#demoProgressFill");
+  const playBtn = overlay.querySelector("#demoPlay");
+  const syncPlay = () => {
+    const playing = tl.isActive() || (!tl.paused() && tl.progress() < 1);
+    playBtn.textContent = playing ? "⏸" : "▶";
+    playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+  };
+  tl.eventCallback("onUpdate", () => { fill.style.width = `${tl.progress() * 100}%`; });
+  tl.eventCallback("onComplete", syncPlay);
+  playBtn.addEventListener("click", () => {
+    if (tl.progress() >= 1) tl.restart();
+    else tl.paused(!tl.paused());
+    syncPlay();
+  });
+  overlay.querySelector("#demoProgress").addEventListener("click", e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    tl.progress(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))).play();
+    syncPlay();
+  });
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) tl.progress(1);
-  overlay.querySelector("#demoReplay").addEventListener("click", () => tl.restart());
+  overlay.querySelector("#demoReplay").addEventListener("click", () => { tl.restart(); syncPlay(); });
   overlay.querySelectorAll(".demo-dot").forEach(d =>
-    d.addEventListener("click", () => tl.play(`s${d.dataset.step}`)));
+    d.addEventListener("click", () => { tl.play(`s${d.dataset.step}`); syncPlay(); }));
 }
