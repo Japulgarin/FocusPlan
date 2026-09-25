@@ -615,6 +615,7 @@ function initPersonalize() {
   $("loadModels").addEventListener("click", loadModelList);
   $("loadExample").addEventListener("click", loadExamplePlan);
   $("useExampleGoal").addEventListener("click", useExampleGoal);
+  $("goalExampleBtn").addEventListener("click", useExampleGoal);
 
   $("testBtn").addEventListener("click", async () => {
     const { provider, key, model } = formValues();

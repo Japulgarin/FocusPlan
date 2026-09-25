@@ -391,6 +391,10 @@ main { min-width: 0; }
   background: rgba(255,180,84,.06);
 }
 .example-text { font-size: 13px; line-height: 1.45; }
+.goal-example { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; }
+#goal { min-height: 150px; }
+#goalExampleBtn { border-color: var(--warn); color: var(--warn); font-weight: 700; }
+#goalExampleBtn:hover { background: rgba(255,180,84,.12); }
 .test-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .test-row .msg { margin-top: 8px; }
 .demo-caption { text-align: center; padding: 14px 8px 4px; min-height: 104px; }
