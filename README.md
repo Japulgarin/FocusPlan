@@ -8,13 +8,15 @@
 
 ## Start
 
+Nothing to install except [Python](https://www.python.org/downloads/), which serves the page on your computer. Get the code by cloning the repo, or with **Code → Download ZIP** on this page (then unzip it). Start it from inside the folder:
+
 ```bash
 git clone https://github.com/Japulgarin/FocusPlan.git
 cd FocusPlan
 python -m http.server 8766
 ```
 
-Open **http://localhost:8766**. On Windows you can just double-click `start.bat`. Needs [Python](https://www.python.org/downloads/).
+Open **http://localhost:8766**. Downloaded the ZIP on Windows? Just double-click `start.bat` in the folder.
 
 ## How to use
 
@@ -87,6 +89,16 @@ js/plans/study.js     example plan: normal study week (AI-generated)
 js/plans/micro.js     example plan: Microeconomics exam (AI-generated)
 js/plans/examples.js  example list, prompt chips, and loading an example from today
 ```
+
+## Roadmap
+
+- **Local AI models:** generate plans with **LM Studio** and **llama.cpp** running on your own computer. Both offer an OpenAI-compatible server, so there's no API key and no cost, and nothing leaves your machine.
+- **Edit plans you already have:** change the time of a slot, move or resize a focus block, rename a session, and add, remove or reorder tasks.
+- **Per-day schedules:** a different wake/sleep time or block length for a single day, or a rest day in the middle of a plan.
+- **Carry over unfinished tasks** to the next day with one click.
+- **Reminders** when a focus block, break or meal starts.
+- **Export and import:** plans as a file to back up or share, and as a calendar (`.ics`).
+- **Hosted version** on GitHub Pages, so it runs without downloading anything.
 
 ## Publishing changes
 
