@@ -8,7 +8,12 @@
 
 ## Start
 
-**Windows:** double-click **`start.bat`**. **Any OS:** run `python -m http.server 8766` in this folder, then open **http://localhost:8766**.
+1. **Download FocusPlan.** On this GitHub page click the green **Code** button → **Download ZIP**, then unzip it (e.g. to your Desktop). Or, if you use git: `git clone https://github.com/Japulgarin/FocusPlan.git`
+2. **Install Python (once).** FocusPlan uses Python only to serve the page on your computer. Get it from **https://www.python.org/downloads/**. On Windows, tick **"Add python.exe to PATH"** in the installer. Mac and Linux usually have it already.
+3. **Start it.**
+   - **Windows:** open the `FocusPlan` folder and double-click **`start.bat`**.
+   - **Mac / Linux:** open a terminal in the `FocusPlan` folder and run `python3 -m http.server 8766`.
+4. Your browser opens **http://localhost:8766** (open it yourself if it doesn't). Keep the black window open while you use the app; close it to stop.
 
 Then: **✨ Personalize** → paste an API key → describe your goal → **✨ Generate plan**. No key yet? Load an **example plan** from the "+ example" pills at the top.
 
